@@ -1,6 +1,8 @@
 ﻿package com.goaltv.ui.screens
 
 import com.goaltv.R
+import com.goaltv.ui.viewmodel.LiveTvViewModel
+import com.goaltv.ui.viewmodel.VodViewModel
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
@@ -82,6 +84,8 @@ import com.goaltv.ui.viewmodel.MainViewModel
 @Composable
 fun DashboardScreen(
     viewModel: MainViewModel,
+    liveTvViewModel: LiveTvViewModel,
+    vodViewModel: VodViewModel,
     modifier: Modifier = Modifier
 ) {
     val isReloading by viewModel.isReloading.collectAsState()
@@ -116,6 +120,15 @@ fun DashboardScreen(
 
     BackHandler {
         showExitDialog = true
+    }
+
+    if (showSearchDialog) {
+        MasterSearchDialog(
+            viewModel = viewModel,
+            liveTvViewModel = liveTvViewModel,
+            vodViewModel = vodViewModel,
+            onDismiss = { showSearchDialog = false }
+        )
     }
 
     if (showExitDialog) {
@@ -298,6 +311,8 @@ fun DashboardScreen(
     if (showSearchDialog) {
         MasterSearchDialog(
             viewModel = viewModel,
+            liveTvViewModel = liveTvViewModel,
+            vodViewModel = vodViewModel,
             onDismiss = { showSearchDialog = false }
         )
     }
@@ -557,6 +572,8 @@ fun BottomFooterStatusBar(
 @Composable
 fun MasterSearchDialog(
     viewModel: MainViewModel,
+    liveTvViewModel: LiveTvViewModel,
+    vodViewModel: VodViewModel,
     onDismiss: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -657,7 +674,8 @@ fun MasterSearchDialog(
                                 category = "TV",
                                 icon = Icons.Rounded.Tv,
                                 onClick = {
-                                    viewModel.playChannel(ch)
+                                    liveTvViewModel.selectChannel(ch)
+                                    viewModel.navigateTo(AppScreen.LIVE_TV)
                                     onDismiss()
                                 }
                             )
@@ -670,7 +688,8 @@ fun MasterSearchDialog(
                                 category = "CINE",
                                 icon = Icons.Rounded.Movie,
                                 onClick = {
-                                    viewModel.playMovie(movie)
+                                    vodViewModel.selectMovie(movie)
+                                    viewModel.navigateTo(AppScreen.MOVIES)
                                     onDismiss()
                                 }
                             )
@@ -683,6 +702,7 @@ fun MasterSearchDialog(
                                 category = "SERIES",
                                 icon = Icons.Rounded.VideoLibrary,
                                 onClick = {
+                                    vodViewModel.selectSeries(series)
                                     viewModel.navigateTo(AppScreen.SERIES)
                                     onDismiss()
                                 }

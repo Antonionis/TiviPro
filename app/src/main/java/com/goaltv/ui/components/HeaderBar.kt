@@ -237,7 +237,7 @@ fun HeaderClock(
 
     LaunchedEffect(Unit) {
         val timeFormatter = SimpleDateFormat("HH:mm", Locale.US)
-        val dateFormatter = SimpleDateFormat("MMMM d, yyyy", Locale("es", "ES"))
+        val dateFormatter = SimpleDateFormat("d 'de' MMMM, yyyy", Locale.forLanguageTag("es-ES"))
         while (isActive) {
             val now = Date()
             timeStr = timeFormatter.format(now).uppercase()

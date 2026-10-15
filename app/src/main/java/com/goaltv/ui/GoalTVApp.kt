@@ -119,7 +119,9 @@ fun GoalTVApp(
                     }
                     AppScreen.DASHBOARD -> {
                         DashboardScreen(
-                            viewModel = mainViewModel
+                            viewModel = mainViewModel,
+                            liveTvViewModel = liveTvViewModel,
+                            vodViewModel = vodViewModel
                         )
                     }
                     AppScreen.LIVE_TV, AppScreen.EPG -> {
@@ -172,7 +174,9 @@ fun GoalTVApp(
                     }
                     AppScreen.FAVORITES -> {
                         DashboardScreen(
-                            viewModel = mainViewModel
+                            viewModel = mainViewModel,
+                            liveTvViewModel = liveTvViewModel,
+                            vodViewModel = vodViewModel
                         )
                     }
                     AppScreen.SETTINGS -> {

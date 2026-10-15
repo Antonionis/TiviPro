@@ -34,6 +34,7 @@ fun FocusableCard(
     shape: Shape = RoundedCornerShape(12.dp),
     colors: CardColors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
     elevation: Dp = 4.dp,
+    focusedBorderColor: Color? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -51,14 +52,16 @@ fun FocusableCard(
         label = "card_shadow"
     )
 
+    val activeBorderColor = focusedBorderColor ?: OrangePrimary
+
     Card(
         modifier = modifier
             .scale(scale)
             .shadow(
                 elevation = shadowElevation.dp,
                 shape = shape,
-                ambientColor = if (isFocused) OrangeGlow else Color.Black,
-                spotColor = if (isFocused) OrangePrimary else Color.Black
+                ambientColor = if (isFocused) activeBorderColor else Color.Black,
+                spotColor = if (isFocused) activeBorderColor else Color.Black
             )
             .clickable(
                 interactionSource = interactionSource,
@@ -70,9 +73,7 @@ fun FocusableCard(
         border = if (isFocused) {
             BorderStroke(
                 width = 2.5.dp,
-                brush = Brush.horizontalGradient(
-                    colors = listOf(OrangePrimary, OrangeGlow)
-                )
+                color = activeBorderColor
             )
         } else {
             BorderStroke(1.dp, Color(0xFF2E2E40))

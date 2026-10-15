@@ -358,13 +358,13 @@ private fun formatLoginExpDate(expDate: String?): String {
             if (ts != null && ts > 0) {
                 val millis = if (ts < 100000000000L) ts * 1000L else ts
                 val date = Date(millis)
-                return SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-ES")).format(date)
+                return SimpleDateFormat("d 'de' MMMM, yyyy", Locale.forLanguageTag("es-ES")).format(date)
             }
         }
         val oneYearAhead = Date(System.currentTimeMillis() + 365L * 24 * 3600 * 1000)
-        SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-ES")).format(oneYearAhead)
+        SimpleDateFormat("d 'de' MMMM, yyyy", Locale.forLanguageTag("es-ES")).format(oneYearAhead)
     } catch (_: Exception) {
         val oneYearAhead = Date(System.currentTimeMillis() + 365L * 24 * 3600 * 1000)
-        SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale.forLanguageTag("es-ES")).format(oneYearAhead)
+        SimpleDateFormat("d 'de' MMMM, yyyy", Locale.forLanguageTag("es-ES")).format(oneYearAhead)
     }
 }

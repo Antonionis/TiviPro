@@ -342,15 +342,17 @@ fun SettingsScreen(
                         color = TextMuted
                     )
                     Spacer(modifier = Modifier.height(10.dp))
-                    Button(
+                    FocusableCard(
                         onClick = { showCategoryDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(44.dp),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
-                        Text("GESTIONAR Y ORDENAR CATEGORÍAS", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("GESTIONAR Y ORDENAR CATEGORÍAS", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                        }
                     }
                 }
             }
@@ -388,7 +390,7 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Button(
+                    FocusableCard(
                         onClick = {
                             val success = viewModel.repository.exportLocalBackup()
                             backupMessage = if (success) {
@@ -399,12 +401,14 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
-                        Text("EXPORTAR AJUSTES", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("EXPORTAR AJUSTES", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                        }
                     }
 
-                    Button(
+                    FocusableCard(
                         onClick = {
                             try {
                                 importLauncher.launch(arrayOf("application/json", "*/*"))
@@ -419,9 +423,11 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
                         shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
-                        Text("RESTAURAR AJUSTES", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("RESTAURAR AJUSTES", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
+                        }
                     }
                 }
 
@@ -492,7 +498,8 @@ fun SettingsScreen(
                         )
                     }
                 }
-                Button(
+
+                FocusableCard(
                     onClick = {
                         isCheckingUpdate = true
                         updateStatusMessage = null
@@ -510,12 +517,14 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                 ) {
-                    if (isCheckingUpdate) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
-                    } else {
-                        Text("BUSCAR ACTUALIZACIÓN", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                        } else {
+                            Text("BUSCAR ACTUALIZACIÓN", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                        }
                     }
                 }
 
@@ -548,39 +557,47 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+                FocusableCard(
                     onClick = { viewModel.navigateTo(AppScreen.LOGIN) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                 ) {
-                    Text("MI CUENTA", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("MI CUENTA", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Button(
+                FocusableCard(
                     onClick = onLogoutClick,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusError)
+                    colors = CardDefaults.cardColors(containerColor = StatusError),
+                    focusedBorderColor = Color(0xFFFFD700)
                 ) {
                     Row(
+                        modifier = Modifier.fillMaxSize(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.PowerSettingsNew,
-                            contentDescription = "Desconectarse",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            contentDescription = "Cerrar Sesión",
+                            tint = Color.White
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("DESCONECTARSE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "DESCONECTARSE DE LA CUENTA",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            fontSize = 13.sp
+                        )
                     }
                 }
             }
