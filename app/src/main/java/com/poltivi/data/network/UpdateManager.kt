@@ -1,0 +1,221 @@
+﻿package com.poltivi.data.network
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.Request
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+
+data class UpdateInfo(
+    val isUpdateAvailable: Boolean,
+    val versionCode: Int,
+    val versionName: String,
+    val apkUrl: String,
+    val changelog: String
+)
+
+object UpdateManager {
+
+    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/poltivi/poltivi/releases/latest"
+
+    private fun isVersionGreater(serverVer: String, currentVer: String): Boolean {
+        val sParts = serverVer.split(".").mapNotNull { it.toIntOrNull() }
+        val cParts = currentVer.split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(sParts.size, cParts.size)
+        for (i in 0 until maxLen) {
+            val s = sParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (s > c) return true
+            if (s < c) return false
+        }
+        return false
+    }
+
+    suspend fun checkForUpdate(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
+        val client = NetworkModule.getOkHttpClient()
+
+        val currentVersionName = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "1.0"
+        } catch (_: Exception) {
+            "1.0"
+        }
+
+        val currentVersionCode = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode
+            }
+        } catch (_: Exception) {
+            1
+        }
+
+        // Try 1: GitHub Releases API
+        try {
+            val request = Request.Builder()
+                .url(GITHUB_RELEASES_API_URL)
+                .header("User-Agent", "PolTivi-App")
+                .header("Accept", "application/vnd.github+json")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
+                    val releaseName = json.optString("name", "")
+                    val changelog = json.optString("body", "• Nueva versión disponible en GitHub.")
+
+                    var apkUrl = ""
+                    val assetsArray = json.optJSONArray("assets")
+                    if (assetsArray != null) {
+                        for (i in 0 until assetsArray.length()) {
+                            val asset = assetsArray.getJSONObject(i)
+                            val name = asset.optString("name", "")
+                            if (name.endsWith(".apk", ignoreCase = true)) {
+                                apkUrl = asset.optString("browser_download_url", "")
+                                break
+                            }
+                        }
+                    }
+
+                    if (apkUrl.isBlank()) {
+                        apkUrl = "https://github.com/poltivi/poltivi/releases/latest/download/poltivi.apk"
+                    }
+
+                    val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
+                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
+
+                    return@withContext UpdateInfo(
+                        isUpdateAvailable = isAvailable,
+                        versionCode = currentVersionCode + 1,
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        apkUrl = apkUrl,
+                        changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Try 2: Fallback version.json
+        try {
+            val fallbackUrl = "https://raw.githubusercontent.com/poltivi/poltivi/main/version.json"
+            val request = Request.Builder()
+                .url(fallbackUrl)
+                .header("User-Agent", "PolTivi-App")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
+                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/poltivi/poltivi/releases/latest/download/poltivi.apk"))
+                    val changelog = json.optString("changelog", "• Nueva versión disponible en GitHub.")
+
+                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
+
+                    return@withContext UpdateInfo(
+                        isUpdateAvailable = isAvailable,
+                        versionCode = currentVersionCode + 1,
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        apkUrl = apkUrl,
+                        changelog = changelog
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        UpdateInfo(false, currentVersionCode, currentVersionName, "", "")
+    }
+
+    suspend fun downloadAndInstallApk(
+        context: Context,
+        apkUrl: String,
+        onProgress: (Float) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val client = NetworkModule.getOkHttpClient()
+
+            val request = Request.Builder()
+                .url(apkUrl)
+                .header("User-Agent", "PolTivi-App")
+                .header("Accept", "*/*")
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext false
+
+            val body = response.body ?: return@withContext false
+            val contentLength = body.contentLength()
+
+            val downloadDir = context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                ?: context.externalCacheDir
+                ?: context.cacheDir
+
+            val apkFile = File(downloadDir, "poltivi_update.apk")
+            if (apkFile.exists()) apkFile.delete()
+
+            body.byteStream().use { input ->
+                FileOutputStream(apkFile).use { output ->
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    var totalRead = 0L
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        totalRead += bytesRead
+                        if (contentLength > 0) {
+                            onProgress(totalRead.toFloat() / contentLength.toFloat())
+                        }
+                    }
+                    output.flush()
+                }
+            }
+
+            installApk(context, apkFile)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun installApk(context: Context, apkFile: File) {
+        try {
+            val apkUri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+
+            val resInfoList = context.packageManager.queryIntentActivities(intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+            for (resolveInfo in resInfoList) {
+                val packageName = resolveInfo.activityInfo.packageName
+                context.grantUriPermission(packageName, apkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+}

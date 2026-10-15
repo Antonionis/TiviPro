@@ -1,7 +1,7 @@
-# ⚽ GoalTV - Reproductor IPTV con Guía Deportiva y EPG
+# ⚽ PolTivi - Reproductor IPTV con Guía Deportiva y EPG
 
 <p align="center">
-  <img src="app/src/main/res/drawable/iconoredondo.webp" width="140" alt="GoalTV Logo" />
+  <img src="app/src/main/res/drawable/iconoredondo.webp" width="140" alt="PolTivi Logo" />
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 > [!IMPORTANT]
-> ⚠️ **GoalTV no proporciona listas de reproducción ni ningún otro contenido digital.**
+> ⚠️ **PolTivi no proporciona listas de reproducción ni ningún otro contenido digital.**
 
 ---
 
@@ -37,12 +37,8 @@
 * **Enriquecimiento TMDB**: Integración con The Movie Database para sinopsis, fechas de estreno y puntuaciones por estrellas.
 * **Mosaico Adaptativo**: Rejilla optimizada que se escala automáticamente según el tamaño de la pantalla.
 
-### 🛡️ VPN Integrada
-* **Cifrado y Enrutamiento**: Pasarela VPN integrada para evitar bloqueos por parte de operadoras de internet.
-* **Acceso Multipantalla**: Conmutador accesible desde la pantalla de Inicio de Sesión, la Cabecera principal y Ajustes.
-
 ### 💾 Copia de Seguridad y Restauración Local
-* **Buscador de Archivos del Sistema**: Exportación e importación de favoritos y categorías en formato JSON (`goaltv_backup.json`).
+* **Buscador de Archivos del Sistema**: Exportación e importación de favoritos y categorías en formato JSON (`poltivi_backup.json`).
 * **Reordenación de Categorías**: Reorganiza las categorías mediante botones dobles (`[ ⏫ ]` y `[ ⏬ ]`) y oculta grupos de canales no deseados.
 
 ---
@@ -75,7 +71,7 @@
 
 Puedes descargar la última versión compilada lista para instalar en tu Smart TV o teléfono móvil desde la sección de Releases:
 
-👉 **[Descargar GoalTV APK (Última Versión)](https://github.com/GoalSpain/goaltv/releases/latest)**
+👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/poltivi/poltivi/releases/latest)**
 
 ---
 
@@ -94,4 +90,4 @@ Puedes descargar la última versión compilada lista para instalar en tu Smart T
 
 Este proyecto está distribuido bajo la licencia pública para uso personal y comunitario.
 
-Developed with ❤️ by **GoalSpain**.
+Developed with ❤️ by **PolTivi**.

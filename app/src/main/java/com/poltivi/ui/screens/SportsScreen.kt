@@ -1,0 +1,371 @@
+﻿package com.poltivi.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.poltivi.model.SportsEvent
+import com.poltivi.ui.components.FocusableCard
+import com.poltivi.ui.components.PolTiviLogo
+import com.poltivi.ui.theme.DarkBackground
+import com.poltivi.ui.theme.OrangeGlow
+import com.poltivi.ui.theme.OrangePrimary
+import com.poltivi.ui.theme.StatusSuccess
+import com.poltivi.ui.theme.SurfaceDark
+import com.poltivi.ui.theme.SurfaceDarkCard
+import com.poltivi.ui.theme.TextMuted
+import com.poltivi.ui.viewmodel.SportsViewModel
+
+@Composable
+fun SportsScreen(
+    viewModel: SportsViewModel,
+    onEventPlay: (SportsEvent) -> Unit,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadSportsEvents()
+    }
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .background(DarkBackground)
+            .onKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    val keyCode = event.nativeKeyEvent.keyCode
+                    val isLeft = event.key == Key.DirectionLeft || keyCode == 21
+                    val isRight = event.key == Key.DirectionRight || keyCode == 22
+                    if (isLeft) {
+                        viewModel.selectDateTab("Hoy")
+                        true
+                    } else if (isRight) {
+                        viewModel.selectDateTab("Mañana")
+                        true
+                    } else false
+                } else false
+            }
+    ) {
+        val screenWidth = maxWidth
+        val isCompactWidth = screenWidth < 600.dp
+        val horizontalPadding = if (isCompactWidth) 14.dp else 28.dp
+        val verticalPadding = if (maxHeight < 500.dp) 8.dp else 16.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding)
+        ) {
+            // TOP HEADER BAR
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onBackClick,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceDarkCard)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Volver al Dashboard",
+                            tint = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Icon(
+                        imageVector = Icons.Rounded.EmojiEvents,
+                        contentDescription = null,
+                        tint = OrangePrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Column {
+                        Text(
+                            text = "PROGRAMACIÓN DEPORTIVA",
+                            color = Color.White,
+                            fontSize = if (isCompactWidth) 15.sp else 18.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.5.sp
+                        )
+                        Text(
+                            text = "Guía de eventos deportivos en vivo y transmisiones",
+                            color = TextMuted,
+                            fontSize = if (isCompactWidth) 10.sp else 11.sp
+                        )
+                    }
+                }
+
+                PolTiviLogo(sizeScale = if (isCompactWidth) 0.6f else 0.75f, showGlow = false)
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            val todayDateStr = remember { getFormattedDate(0) }
+            val tomorrowDateStr = remember { getFormattedDate(1) }
+
+            val dateTabs = listOf(
+                "Hoy" to "HOY ($todayDateStr)",
+                "Mañana" to "MAÑANA ($tomorrowDateStr)"
+            )
+
+            // DATE TABS: HOY & MAÑANA
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                dateTabs.forEach { (tabKey, tabLabel) ->
+                    val isSelected = uiState.selectedDateTab.equals(tabKey, ignoreCase = true)
+                    FocusableCard(
+                        onClick = { viewModel.selectDateTab(tabKey) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(38.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(if (isSelected) OrangePrimary else SurfaceDarkCard),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = tabLabel,
+                                color = if (isSelected) Color.White else TextMuted,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // EVENTS LIST (Continuous Vertical Scroll)
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = OrangePrimary)
+                }
+            } else if (uiState.filteredEvents.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Rounded.EmojiEvents,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(42.dp)
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "No hay eventos deportivos disponibles para '${uiState.selectedDateTab}'",
+                            color = TextMuted,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(uiState.filteredEvents, key = { it.id }) { event ->
+                        SportsEventCard(event = event)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SportsEventCard(
+    event: SportsEvent,
+    modifier: Modifier = Modifier
+) {
+    FocusableCard(
+        onClick = {},
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            // Top Row: Sport Badge + Competition Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Sport Category Badge
+                Surface(
+                    color = OrangePrimary.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(6.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = event.sportCategory,
+                        color = OrangeGlow,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+
+                // Competition Badge
+                Surface(
+                    color = Color(0xFF2A1B4E),
+                    shape = RoundedCornerShape(6.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF673AB7))
+                ) {
+                    Text(
+                        text = event.competition,
+                        color = Color(0xFFD1C4E9),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Teams / Event Title
+            Text(
+                text = event.title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Bottom Row: Hour & Channel
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF1B1B28), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Schedule,
+                        contentDescription = null,
+                        tint = StatusSuccess,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = event.dateTimeDisplay,
+                        color = StatusSuccess,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Tv,
+                        contentDescription = "Emisión",
+                        tint = OrangePrimary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = event.channelName,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun getFormattedDate(dayOffset: Int): String {
+    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Madrid")).apply {
+        add(java.util.Calendar.DAY_OF_YEAR, dayOffset)
+    }
+    val sdf = java.text.SimpleDateFormat("d 'de' MMMM", java.util.Locale("es", "ES"))
+    return sdf.format(cal.time)
+}
