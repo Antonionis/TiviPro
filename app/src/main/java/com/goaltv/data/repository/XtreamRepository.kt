@@ -133,6 +133,18 @@ class XtreamRepositoryImpl(
         }
     }
 
+    private fun cleanCategoryName(rawName: String?): String {
+        if (rawName.isNullOrBlank()) return "Uncategorized"
+        return rawName
+            .replace(Regex("""(?i)^\s*EU\s*-\s*ES\b\s*:?"""), "")
+            .replace(Regex("""(?i)^\s*EU-ES\b\s*:?"""), "")
+            .replace(Regex("""(?i)^\s*ES\s*-\s*ES\b\s*:?"""), "")
+            .replace(Regex("""(?i)^\s*ES\s*-\s*"""), "")
+            .replace(Regex("""(?i)^\s*\|?\s*ES\s*\|\s*"""), "")
+            .trim()
+            .ifBlank { rawName.trim() }
+    }
+
     override suspend fun getLiveCategories(
         serverUrl: String,
         username: String,
@@ -144,7 +156,7 @@ class XtreamRepositoryImpl(
             val list = response.body() ?: emptyList()
             list.mapNotNull { dto ->
                 val id = dto.categoryId ?: return@mapNotNull null
-                Category(id = id, name = dto.categoryName ?: "Uncategorized", type = CategoryType.LIVE)
+                Category(id = id, name = cleanCategoryName(dto.categoryName), type = CategoryType.LIVE)
             }
         }
     }
@@ -191,7 +203,7 @@ class XtreamRepositoryImpl(
             val list = response.body() ?: emptyList()
             list.mapNotNull { dto ->
                 val id = dto.categoryId ?: return@mapNotNull null
-                Category(id = id, name = dto.categoryName ?: "Uncategorized", type = CategoryType.VOD)
+                Category(id = id, name = cleanCategoryName(dto.categoryName), type = CategoryType.VOD)
             }
         }
     }
@@ -250,7 +262,7 @@ class XtreamRepositoryImpl(
             val list = response.body() ?: emptyList()
             list.mapNotNull { dto ->
                 val id = dto.categoryId ?: return@mapNotNull null
-                Category(id = id, name = dto.categoryName ?: "Uncategorized", type = CategoryType.SERIES)
+                Category(id = id, name = cleanCategoryName(dto.categoryName), type = CategoryType.SERIES)
             }
         }
     }
