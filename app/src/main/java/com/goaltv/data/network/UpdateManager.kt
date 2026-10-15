@@ -38,9 +38,29 @@ object UpdateManager {
     }
 
     suspend fun checkForUpdate(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
-        try {
-            val client = NetworkModule.getOkHttpClient()
+        val client = NetworkModule.getOkHttpClient()
 
+        val currentVersionName = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "1.0"
+        } catch (_: Exception) {
+            "1.0"
+        }
+
+        val currentVersionCode = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode
+            }
+        } catch (_: Exception) {
+            1
+        }
+
+        // Try 1: GitHub Releases API
+        try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
                 .header("User-Agent", "GoalTV-App")
@@ -49,69 +69,77 @@ object UpdateManager {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) {
-                    return@use UpdateInfo(false, 0, "", "", "")
-                }
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
 
-                val jsonStr = response.body.string()
-                val json = JSONObject(jsonStr)
+                    val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
+                    val releaseName = json.optString("name", "")
+                    val changelog = json.optString("body", "• Nueva versión disponible en GitHub.")
 
-                val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
-                val releaseName = json.optString("name", "")
-                val changelog = json.optString("body", "• Nueva versión disponible en GitHub.")
-
-                val currentVersionName = try {
-                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                    pInfo.versionName ?: "1.0"
-                } catch (_: Exception) {
-                    "1.0"
-                }
-
-                val currentVersionCode = try {
-                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        pInfo.longVersionCode.toInt()
-                    } else {
-                        @Suppress("DEPRECATION")
-                        pInfo.versionCode
-                    }
-                } catch (_: Exception) {
-                    1
-                }
-
-                // Extract browser_download_url for goaltv.apk from assets array
-                val assetsArray = json.optJSONArray("assets")
-                var apkUrl = ""
-                if (assetsArray != null) {
-                    for (i in 0 until assetsArray.length()) {
-                        val asset = assetsArray.getJSONObject(i)
-                        val name = asset.optString("name", "")
-                        if (name.endsWith(".apk", ignoreCase = true)) {
-                            apkUrl = asset.optString("browser_download_url", "")
-                            break
+                    var apkUrl = ""
+                    val assetsArray = json.optJSONArray("assets")
+                    if (assetsArray != null) {
+                        for (i in 0 until assetsArray.length()) {
+                            val asset = assetsArray.getJSONObject(i)
+                            val name = asset.optString("name", "")
+                            if (name.endsWith(".apk", ignoreCase = true)) {
+                                apkUrl = asset.optString("browser_download_url", "")
+                                break
+                            }
                         }
                     }
+
+                    if (apkUrl.isBlank()) {
+                        apkUrl = "https://github.com/GoalSpain/goaltv/releases/latest/download/goaltv.apk"
+                    }
+
+                    val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
+                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
+
+                    return@withContext UpdateInfo(
+                        isUpdateAvailable = isAvailable,
+                        versionCode = currentVersionCode + 1,
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        apkUrl = apkUrl,
+                        changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
+                    )
                 }
-
-                if (apkUrl.isBlank()) {
-                    apkUrl = "https://github.com/GoalSpain/goaltv/releases/latest/download/goaltv.apk"
-                }
-
-                val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
-                val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
-
-                UpdateInfo(
-                    isUpdateAvailable = isAvailable,
-                    versionCode = currentVersionCode + 1,
-                    versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.3",
-                    apkUrl = apkUrl,
-                    changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
-                )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            UpdateInfo(false, 0, "", "", "")
-        }
+        } catch (_: Exception) {}
+
+        // Try 2: Fallback version.json
+        try {
+            val fallbackUrl = "https://raw.githubusercontent.com/GoalSpain/goaltv/main/version.json"
+            val request = Request.Builder()
+                .url(fallbackUrl)
+                .header("User-Agent", "GoalTV-App")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
+                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/GoalSpain/goaltv/releases/latest/download/goaltv.apk"))
+                    val changelog = json.optString("changelog", "• Nueva versión disponible en GitHub.")
+
+                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
+
+                    return@withContext UpdateInfo(
+                        isUpdateAvailable = isAvailable,
+                        versionCode = currentVersionCode + 1,
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        apkUrl = apkUrl,
+                        changelog = changelog
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        UpdateInfo(false, currentVersionCode, currentVersionName, "", "")
     }
 
     suspend fun downloadAndInstallApk(
