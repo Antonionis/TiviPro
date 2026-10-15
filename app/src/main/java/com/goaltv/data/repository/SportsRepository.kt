@@ -65,6 +65,15 @@ class SportsRepositoryImpl : SportsRepository {
         }
     }
 
+    private fun getSpanishDayAndMonth(dayOffset: Int): Pair<Int, String> {
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Madrid")).apply {
+            add(java.util.Calendar.DAY_OF_YEAR, dayOffset)
+        }
+        val dayNumber = cal.get(java.util.Calendar.DAY_OF_MONTH)
+        val monthName = java.text.SimpleDateFormat("MMMM", java.util.Locale("es", "ES")).format(cal.time).lowercase()
+        return Pair(dayNumber, monthName)
+    }
+
     private suspend fun fetchMarcaTvGuide(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
         val events = mutableListOf<SportsEvent>()
         try {
@@ -87,13 +96,22 @@ class SportsRepositoryImpl : SportsRepository {
                 // Split HTML by date section headers <span class="title-section-widget">
                 val sections = html.split(Regex("""<span[^>]*class="title-section-widget"[^>]*>""", RegexOption.IGNORE_CASE))
 
+                val (todayNum, todayMonth) = getSpanishDayAndMonth(0)
+                val (tomorrowNum, tomorrowMonth) = getSpanishDayAndMonth(1)
+
                 var idCounter = 1
                 sections.forEachIndexed { sectionIdx, sectionContent ->
                     if (sectionIdx == 0) return@forEachIndexed
 
-                    val dateTab = when (sectionIdx) {
-                        1 -> "Hoy"
-                        2 -> "Mañana"
+                    val headerMatch = Regex("""(?s)^(.*?)</span>""", RegexOption.IGNORE_CASE).find(sectionContent)
+                    val rawHeader = headerMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), " ")?.lowercase() ?: ""
+
+                    val isTodayHeader = rawHeader.contains("$todayNum") && rawHeader.contains(todayMonth)
+                    val isTomorrowHeader = rawHeader.contains("$tomorrowNum") && rawHeader.contains(tomorrowMonth)
+
+                    val dateTab = when {
+                        isTodayHeader || (sectionIdx == 1 && !isTomorrowHeader) -> "Hoy"
+                        isTomorrowHeader || sectionIdx == 2 -> "Mañana"
                         else -> "Próximos Días"
                     }
 
@@ -155,40 +173,35 @@ class SportsRepositoryImpl : SportsRepository {
 
     private fun getMarcaDefaultEvents(): List<SportsEvent> {
         return listOf(
-            // Hoy (Miércoles 14)
-            SportsEvent("m1", "Estados Unidos - España", "AMISTOSO FEMENINO", "Fútbol", "Hoy", "01:00 • LA 1", "LA 1"),
-            SportsEvent("m2", "Boca - Vasco de Gama", "COPA SUDAMERICANA", "Fútbol", "Hoy", "02:30 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m3", "Van de Zandschulp - Jódar", "MASTERS SHANGHAI", "Tenis", "Hoy", "06:00 • Movistar Plus", "Movistar Plus"),
-            SportsEvent("m4", "Sesión Vespertina (Shanghai)", "CAMPEONATO DEL MUNDO EN PISTA", "Ciclismo", "Hoy", "12:30 • Teledeporte", "Teledeporte"),
-            SportsEvent("m5", "Roma - Real Madrid", "YOUTH LEAGUE", "Fútbol", "Hoy", "14:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m6", "Betis - Oporto", "YOUTH LEAGUE", "Fútbol", "Hoy", "16:00 • M+ Liga de Campeones", "M+ Liga de Campeones"),
-            SportsEvent("m7", "Verona-Vicenza (167.0 km)", "GIRO DEL VENETO", "Ciclismo", "Hoy", "16:00 • Eurosport 1", "Eurosport 1"),
-            SportsEvent("m8", "LASK - Liverpool", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones 2", "M+ Liga de Campeones 2"),
-            SportsEvent("m9", "Feyenoord - Como", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones 3", "M+ Liga de Campeones 3"),
-            SportsEvent("m10", "BMA365 Bamberg Baskets - UCAM Murcia", "CHAMPIONS LEAGUE", "Baloncesto", "Hoy", "19:00 • Teledeporte", "Teledeporte"),
-            SportsEvent("m11", "Zaragoza - Landes", "EUROLIGA FEMENINA", "Baloncesto", "Hoy", "19:00 • M+ Baloncesto 3", "M+ Baloncesto 3"),
-            SportsEvent("m12", "Valencia Basket - Fenerbahçe", "EUROLIGA FEMENINA", "Baloncesto", "Hoy", "20:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m13", "Spar Girona - Ostrava", "EUROCUP FEMENINA", "Baloncesto", "Hoy", "20:15 • Esport 3", "Esport 3"),
-            SportsEvent("m14", "Burgos - Jerusalem", "EUROCUP", "Baloncesto", "Hoy", "20:30 • M+ Baloncesto 2", "M+ Baloncesto 2"),
-            SportsEvent("m15", "Roma - Real Madrid", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones", "M+ Liga de Campeones"),
-            SportsEvent("m16", "Betis - Oporto", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 2", "M+ Liga de Campeones 2"),
-            SportsEvent("m17", "Manchester City - PSG", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 3", "M+ Liga de Campeones 3"),
-            SportsEvent("m18", "Aston Villa - Fenerbahçe", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 5", "M+ Liga de Campeones 5"),
-            SportsEvent("m19", "Shakhtar - AEK Atenas", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 6", "M+ Liga de Campeones 6"),
-            SportsEvent("m20", "Bodo/Glimt - Borussia Dortmund", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 7", "M+ Liga de Campeones 7"),
-            SportsEvent("m21", "S. Bratislava - Stuttgart", "CHAMPIONS LEAGUE", "Fútbol", "Hoy", "21:00 • M+ Liga de Campeones 8", "M+ Liga de Campeones 8"),
-            SportsEvent("m22", "Surne Bilbao - SK Slavia Praga ERA NBK", "CHAMPIONS LEAGUE", "Baloncesto", "Hoy", "21:00 • Teledeporte", "Teledeporte"),
-            SportsEvent("m23", "La Laguna Tenerife - Maxima Roma", "EUROCUP", "Baloncesto", "Hoy", "21:00 • M+ Baloncesto", "M+ Baloncesto"),
+            // Hoy (Jueves 15)
+            SportsEvent("m1", "At. Mineiro - Montevideo City", "COPA SUDAMERICANA", "Fútbol", "Hoy", "00:00 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m2", "Fluminense - Palmeiras", "COPA LIBERTADORES", "Fútbol", "Hoy", "02:30 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m3", "Gea - Davidovich", "MASTERS SHANGHAI", "Tenis", "Hoy", "08:30 • Movistar Plus", "Movistar Plus"),
+            SportsEvent("m4", "Sesión Vespertina (Shanghai)", "CAMPEONATO DEL MUNDO EN PISTA", "Ciclismo", "Hoy", "11:00 • Teledeporte", "Teledeporte"),
+            SportsEvent("m5", "Zverev - De Miñaur", "MASTERS SHANGHAI", "Tenis", "Hoy", "12:00 • M+ Deportes 2", "M+ Deportes 2"),
+            SportsEvent("m6", "Sesión Vespertina (Astana)", "COPA DEL MUNDO", "Natación", "Hoy", "15:00 • Teledeporte", "Teledeporte"),
+            SportsEvent("m7", "Union Saint-Gilloise - Real Sociedad", "EUROPA LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones", "M+ Liga de Campeones"),
+            SportsEvent("m8", "Universitatea Craiova - Getafe", "CONFERENCE LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones 2", "M+ Liga de Campeones 2"),
+            SportsEvent("m9", "España - Chile", "CAMPEONATO DEL MUNDO MASCULINO", "H. Patines", "Hoy", "19:30 • Teledeporte", "Teledeporte"),
+            SportsEvent("m10", "Al Ahli - Al Nassr", "LIGA SAUDÍ", "Fútbol", "Hoy", "20:00 • M+ Vamos 2", "M+ Vamos 2"),
+            SportsEvent("m11", "Valencia Basket - Maccabi Tel Aviv", "EUROLIGA", "Baloncesto", "Hoy", "20:30 • M+ Baloncesto", "M+ Baloncesto"),
+            SportsEvent("m12", "Celta - Juventus", "EUROPA LEAGUE", "Fútbol", "Hoy", "21:00 • Movistar Plus", "Movistar Plus"),
+            SportsEvent("m13", "Real Madrid - ASVEL", "EUROLIGA", "Baloncesto", "Hoy", "21:00 • M+ Vamos", "M+ Vamos"),
 
-            // Mañana (Jueves 15)
-            SportsEvent("m24", "At. Mineiro - Montevideo City", "COPA SUDAMERICANA", "Fútbol", "Mañana", "00:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m25", "Fluminense - Palmeiras", "COPA LIBERTADORES", "Fútbol", "Mañana", "02:30 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m26", "Union Saint-Gilloise - Real Sociedad", "EUROPA LEAGUE", "Fútbol", "Mañana", "18:45 • M+ Liga de Campeones", "M+ Liga de Campeones"),
-            SportsEvent("m27", "Universitatea Craiova - Getafe", "CONFERENCE LEAGUE", "Fútbol", "Mañana", "18:45 • M+ Liga de Campeones 2", "M+ Liga de Campeones 2"),
-            SportsEvent("m28", "Al Ahli - Al Nassr", "LIGA SAUDÍ", "Fútbol", "Mañana", "20:00 • M+ Vamos 2", "M+ Vamos 2"),
-            SportsEvent("m29", "Valencia Basket - Maccabi Tel Aviv", "EUROLIGA", "Baloncesto", "Mañana", "20:30 • M+ Baloncesto", "M+ Baloncesto"),
-            SportsEvent("m30", "Celta - Juventus", "EUROPA LEAGUE", "Fútbol", "Mañana", "21:00 • Movistar Plus", "Movistar Plus"),
-            SportsEvent("m31", "Real Madrid - ASVEL", "EUROLIGA", "Baloncesto", "Mañana", "21:00 • M+ Vamos", "M+ Vamos")
+            // Mañana (Viernes 16)
+            SportsEvent("m14", "Denver Broncos - Seahawks", "NFL JORNADA 6", "Rugby", "Mañana", "02:15 • DAZN 2", "DAZN 2"),
+            SportsEvent("m15", "Estudiantes de la Plata - Flamengo", "COPA LIBERTADORES", "Fútbol", "Mañana", "02:30 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m16", "Milan (Cuartos de Final)", "PREMIER PADEL", "Padel", "Mañana", "09:00 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m17", "Henan FC - Tianjin Jinmen Tiger", "SUPERLIGA CHINA", "Fútbol", "Mañana", "13:35 • Replay", "Replay"),
+            SportsEvent("m18", "Al Riyadh - Al Hilal", "LIGA SAUDÍ", "Fútbol", "Mañana", "17:00 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m19", "Cartagena - Europa", "1ª RFEF", "Fútbol", "Mañana", "19:00 • Movistar Primera Federación", "Movistar Primera Federación"),
+            SportsEvent("m20", "Ademar León - Villa de Aranda", "LIGA ASOBAL", "Balonmano", "Mañana", "19:00 • Eurosport 2", "Eurosport 2"),
+            SportsEvent("m21", "Al Ittihad - Al Shabab", "LIGA SAUDÍ", "Fútbol", "Mañana", "20:00 • M+ Vamos", "M+ Vamos"),
+            SportsEvent("m22", "CD Leganés - Córdoba CF", "LALIGA HYPERMOTION", "Fútbol", "Mañana", "20:30 • LALIGA TV HYPERMOTION", "LALIGA TV HYPERMOTION"),
+            SportsEvent("m23", "FC Barcelona - Olympiacos", "EUROLIGA", "Baloncesto", "Mañana", "20:30 • Movistar Plus", "Movistar Plus"),
+            SportsEvent("m24", "Virtus - Baskonia", "EUROLIGA", "Baloncesto", "Mañana", "20:30 • M+ Baloncesto 2", "M+ Baloncesto 2"),
+            SportsEvent("m25", "RC Deportivo - Levante UD", "LALIGA EA SPORTS", "Fútbol", "Mañana", "21:00 • M+ LALIGA", "M+ LALIGA"),
+            SportsEvent("m26", "Alcorcón - Huesca", "1ª RFEF", "Fútbol", "Mañana", "21:15 • Movistar Primera Federación", "Movistar Primera Federación")
         )
     }
 
