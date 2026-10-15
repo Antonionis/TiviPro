@@ -68,7 +68,12 @@ class SportsRepositoryImpl : SportsRepository {
     private suspend fun fetchMarcaTvGuide(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
         val events = mutableListOf<SportsEvent>()
         try {
-            val client = NetworkModule.getOkHttpClient()
+            val client = okhttp3.OkHttpClient.Builder()
+                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .followRedirects(true)
+                .build()
+
             val request = Request.Builder()
                 .url("https://www.marca.com/programacion-tv.html?t=${System.currentTimeMillis()}")
                 .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
