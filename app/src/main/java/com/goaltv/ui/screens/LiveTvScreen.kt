@@ -534,7 +534,11 @@ fun EpgProgramItem(
 
     FocusableCard(
         onClick = {},
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (isLive) Modifier.border(1.5.dp, OrangePrimary, RoundedCornerShape(8.dp)) else Modifier
+            ),
         shape = RoundedCornerShape(8.dp),
         colors = androidx.compose.material3.CardDefaults.cardColors(
             containerColor = if (isLive) Color(0xFF282218) else SurfaceDarkCard

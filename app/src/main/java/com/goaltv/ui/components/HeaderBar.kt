@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -21,10 +22,11 @@ import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import com.goaltv.ui.components.FocusableCard
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -123,20 +125,14 @@ fun HeaderBar(
             }
 
             // Search Button: "Búsqueda maestra"
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(SurfaceDarkCard)
-                    .border(
-                        width = 1.dp,
-                        color = OrangePrimary.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(18.dp)
-                    )
-                    .clickable { onSearchClick() }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                contentAlignment = Alignment.Center
+            FocusableCard(
+                onClick = onSearchClick,
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                elevation = 2.dp
             ) {
                 Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
@@ -156,62 +152,63 @@ fun HeaderBar(
                 }
             }
 
-            // VPNBook Badge
-            VpnBookBadge()
+            // ProtonVPN Badge
+            ProtonVpnBadge()
 
             // Account Icon Button
-            IconButton(
+            FocusableCard(
                 onClick = onAccountClick,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceDarkCard)
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                elevation = 2.dp,
+                modifier = Modifier.size(34.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.AccountCircle,
-                    contentDescription = "Cuenta / Iniciar Sesión",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AccountCircle,
+                        contentDescription = "Cuenta / Iniciar Sesión",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun VpnBookBadge(
+fun ProtonVpnBadge(
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    val isVpnActive by com.goaltv.data.network.VpnBookManager.isVpnActive.collectAsState()
-    val isConnecting by com.goaltv.data.network.VpnBookManager.isConnecting.collectAsState()
+    val isVpnActive by com.goaltv.data.network.ProtonVpnManager.isVpnActive.collectAsState()
+    val isConnecting by com.goaltv.data.network.ProtonVpnManager.isConnecting.collectAsState()
 
     val badgeBg = if (isVpnActive) Color(0xFF0F2E1E) else SurfaceDarkCard
     val badgeContentColor = if (isVpnActive) StatusSuccess else TextSecondary
     val statusText = when {
-        isConnecting -> "VPNBook ⏳"
-        isVpnActive -> "VPNBook 🛡️ Activo"
-        else -> "VPNBook"
+        isConnecting -> "ProtonVPN ⏳"
+        isVpnActive -> "ProtonVPN 🛡️ Activo"
+        else -> "ProtonVPN"
     }
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(badgeBg)
-            .border(
-                width = 1.dp,
-                color = if (isVpnActive) StatusSuccess.copy(alpha = 0.5f) else Color.Gray.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable {
-                scope.launch {
-                    com.goaltv.data.network.VpnBookManager.toggleVpn(context)
-                }
+    FocusableCard(
+        onClick = {
+            scope.launch {
+                com.goaltv.data.network.ProtonVpnManager.toggleVpn(context)
             }
-            .padding(horizontal = 8.dp, vertical = 5.dp)
+        },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = badgeBg),
+        elevation = 2.dp,
+        modifier = modifier
     ) {
         Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {

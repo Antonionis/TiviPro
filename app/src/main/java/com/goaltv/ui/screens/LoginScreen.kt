@@ -26,7 +26,6 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Security
-import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -211,9 +210,8 @@ fun LoginScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // VPNBook OpenVPN Toggle Card
-                        val isVpnActive by com.goaltv.data.network.VpnBookManager.isVpnActive.collectAsState()
-                        val vpnStatusMsg by com.goaltv.data.network.VpnBookManager.vpnStatusMessage.collectAsState()
+                        // ProtonVPN Toggle Card
+                        val isVpnActive by com.goaltv.data.network.ProtonVpnManager.isVpnActive.collectAsState()
                         val loginContext = LocalContext.current
                         val loginScope = rememberCoroutineScope()
 
@@ -237,20 +235,20 @@ fun LoginScreen(
                                 ) {
                                     Icon(
                                         imageVector = if (isVpnActive) Icons.Rounded.Security else Icons.Rounded.Lock,
-                                        contentDescription = "VPNBook",
+                                        contentDescription = "ProtonVPN",
                                         tint = if (isVpnActive) StatusSuccess else OrangePrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            text = "VPNBook Anti-bloqueo (FR231)",
+                                            text = "ProtonVPN (protonvpn.com)",
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
                                         Text(
-                                            text = vpnStatusMsg,
+                                            text = if (isVpnActive) "ProtonVPN Conectado (goalspain@gmail.com)" else "ProtonVPN Desconectado",
                                             fontSize = 10.sp,
                                             color = if (isVpnActive) StatusSuccess else TextMuted
                                         )
@@ -261,7 +259,7 @@ fun LoginScreen(
                                     checked = isVpnActive,
                                     onCheckedChange = {
                                         loginScope.launch {
-                                            com.goaltv.data.network.VpnBookManager.toggleVpn(loginContext)
+                                            com.goaltv.data.network.ProtonVpnManager.toggleVpn(loginContext)
                                         }
                                     },
                                     colors = SwitchDefaults.colors(

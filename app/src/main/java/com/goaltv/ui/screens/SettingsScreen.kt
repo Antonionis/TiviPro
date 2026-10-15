@@ -265,13 +265,14 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Section: VPN
-        val isVpnActive by com.goaltv.data.network.VpnBookManager.isVpnActive.collectAsState()
+        // Section: ProtonVPN
+        val isVpnActive by com.goaltv.data.network.ProtonVpnManager.isVpnActive.collectAsState()
+        val vpnStatusMsg by com.goaltv.data.network.ProtonVpnManager.vpnStatusMessage.collectAsState()
         val settingsContext = LocalContext.current
         val settingsScope = rememberCoroutineScope()
 
         SettingsCard(
-            title = "VPN",
+            title = "PROTONVPN (PROTONVPN.COM)",
             icon = Icons.Rounded.Security
         ) {
             Row(
@@ -285,10 +286,16 @@ fun SettingsScreen(
                         .padding(end = 12.dp)
                 ) {
                     Text(
-                        text = if (isVpnActive) "Estado: VPN Conectado" else "Estado: VPN Desconectado",
+                        text = "Cuenta: ${com.goaltv.data.network.ProtonVpnManager.PROTON_ACCOUNT}",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isVpnActive) StatusSuccess else Color.White
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Estado: $vpnStatusMsg",
+                        fontSize = 11.sp,
+                        color = if (isVpnActive) StatusSuccess else TextMuted
                     )
                 }
 
@@ -296,7 +303,7 @@ fun SettingsScreen(
                     checked = isVpnActive,
                     onCheckedChange = {
                         settingsScope.launch {
-                            com.goaltv.data.network.VpnBookManager.toggleVpn(settingsContext)
+                            com.goaltv.data.network.ProtonVpnManager.toggleVpn(settingsContext)
                         }
                     },
                     colors = SwitchDefaults.colors(
@@ -462,15 +469,36 @@ fun SettingsScreen(
         }
 
         SettingsCard(
-            title = "ACTUALIZACIÓN DE SOFTWARE (v$appVersionName)",
+            title = "ACTUALIZACIÓN DE SOFTWARE",
             icon = Icons.Rounded.SystemUpdate
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Comprueba si existe una versión más reciente de GoalTV:",
-                    fontSize = 12.sp,
-                    color = TextMuted
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Comprueba si existe una versión más reciente de GoalTV:",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF2A2A40))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Versión actual: v$appVersionName",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = OrangeGlow
+                        )
+                    }
+                }
                 Button(
                     onClick = {
                         isCheckingUpdate = true

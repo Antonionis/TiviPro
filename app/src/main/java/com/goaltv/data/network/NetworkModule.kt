@@ -40,11 +40,11 @@ object NetworkModule {
                 chain.proceed(request)
             }
 
-        if (VpnBookManager.isVpnActive.value) {
+        if (ProtonVpnManager.isVpnActive.value) {
             try {
                 val vpnProxy = java.net.Proxy(
                     java.net.Proxy.Type.HTTP,
-                    java.net.InetSocketAddress("5.196.64.231", 443)
+                    java.net.InetSocketAddress(ProtonVpnManager.PROTON_GATEWAY_IP, ProtonVpnManager.PROTON_GATEWAY_PORT)
                 )
                 builder.proxy(vpnProxy)
             } catch (_: Exception) {}

@@ -15,8 +15,8 @@ android {
         applicationId = "com.goaltv"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -43,10 +43,8 @@ android {
             if (ksFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            optimization {
-                enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-            }
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         debug {
             val ksFile = rootProject.file("keystore/goaltv_release.jks")

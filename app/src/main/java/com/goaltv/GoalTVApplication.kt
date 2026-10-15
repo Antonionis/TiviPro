@@ -20,6 +20,7 @@ class GoalTVApplication : Application(), ImageLoaderFactory {
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .okHttpClient(NetworkModule.getOkHttpClient())
+            .allowHardware(false)
             .crossfade(true)
             .build()
     }

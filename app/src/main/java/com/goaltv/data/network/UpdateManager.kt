@@ -7,7 +7,6 @@ import android.os.Build
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Credentials
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
@@ -23,18 +22,29 @@ data class UpdateInfo(
 
 object UpdateManager {
 
-    private const val VERSION_JSON_URL = "http://130.110.245.130/version.json"
-    private const val AUTH_USER = "appuser"
-    private const val AUTH_PASS = "r7Gw7PJFq6&op6"
+    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/GoalSpain/goaltv/releases/latest"
+
+    private fun isVersionGreater(serverVer: String, currentVer: String): Boolean {
+        val sParts = serverVer.split(".").mapNotNull { it.toIntOrNull() }
+        val cParts = currentVer.split(".").mapNotNull { it.toIntOrNull() }
+        val maxLen = maxOf(sParts.size, cParts.size)
+        for (i in 0 until maxLen) {
+            val s = sParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (s > c) return true
+            if (s < c) return false
+        }
+        return false
+    }
 
     suspend fun checkForUpdate(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
         try {
             val client = NetworkModule.getOkHttpClient()
-            val credential = Credentials.basic(AUTH_USER, AUTH_PASS)
 
             val request = Request.Builder()
-                .url("$VERSION_JSON_URL?t=${System.currentTimeMillis()}")
-                .header("Authorization", credential)
+                .url(GITHUB_RELEASES_API_URL)
+                .header("User-Agent", "GoalTV-App")
+                .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
@@ -45,6 +55,17 @@ object UpdateManager {
 
                 val jsonStr = response.body.string()
                 val json = JSONObject(jsonStr)
+
+                val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
+                val releaseName = json.optString("name", "")
+                val changelog = json.optString("body", "• Nueva versión disponible en GitHub.")
+
+                val currentVersionName = try {
+                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    pInfo.versionName ?: "1.0"
+                } catch (_: Exception) {
+                    "1.0"
+                }
 
                 val currentVersionCode = try {
                     val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -58,47 +79,37 @@ object UpdateManager {
                     1
                 }
 
-                val currentVersionName = try {
-                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                    pInfo.versionName ?: "1.0"
-                } catch (_: Exception) {
-                    "1.0"
+                // Extract browser_download_url for goaltv.apk from assets array
+                val assetsArray = json.optJSONArray("assets")
+                var apkUrl = ""
+                if (assetsArray != null) {
+                    for (i in 0 until assetsArray.length()) {
+                        val asset = assetsArray.getJSONObject(i)
+                        val name = asset.optString("name", "")
+                        if (name.endsWith(".apk", ignoreCase = true)) {
+                            apkUrl = asset.optString("browser_download_url", "")
+                            break
+                        }
+                    }
                 }
 
-                // Support snake_case (version_code) returned by server
-                val serverVersionCode = when {
-                    json.has("version_code") -> json.optInt("version_code", currentVersionCode)
-                    json.has("versionCode") -> json.optInt("versionCode", currentVersionCode)
-                    else -> currentVersionCode
+                if (apkUrl.isBlank()) {
+                    apkUrl = "https://github.com/GoalSpain/goaltv/releases/latest/download/goaltv.apk"
                 }
 
-                val serverVersionName = when {
-                    json.has("version_name") -> json.optString("version_name", "")
-                    json.has("versionName") -> json.optString("versionName", "")
-                    else -> ""
-                }
-
-                val apkUrl = when {
-                    json.has("download_url") -> json.optString("download_url", "http://130.110.245.130/goaltv.apk")
-                    json.has("apkUrl") -> json.optString("apkUrl", "http://130.110.245.130/goaltv.apk")
-                    json.has("apk_url") -> json.optString("apk_url", "http://130.110.245.130/goaltv.apk")
-                    else -> "http://130.110.245.130/goaltv.apk"
-                }
-
-                val changelog = json.optString("changelog", "• Nueva versión disponible\n• Mejoras de rendimiento y estabilidad")
-
-                val isAvailable = (serverVersionCode > currentVersionCode) ||
-                                  (serverVersionName.isNotBlank() && serverVersionName != currentVersionName)
+                val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
+                val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
 
                 UpdateInfo(
                     isUpdateAvailable = isAvailable,
-                    versionCode = serverVersionCode,
-                    versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.1",
+                    versionCode = currentVersionCode + 1,
+                    versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.3",
                     apkUrl = apkUrl,
-                    changelog = changelog
+                    changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            e.printStackTrace()
             UpdateInfo(false, 0, "", "", "")
         }
     }
@@ -110,11 +121,11 @@ object UpdateManager {
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             val client = NetworkModule.getOkHttpClient()
-            val credential = Credentials.basic(AUTH_USER, AUTH_PASS)
 
             val request = Request.Builder()
                 .url(apkUrl)
-                .header("Authorization", credential)
+                .header("User-Agent", "GoalTV-App")
+                .header("Accept", "*/*")
                 .build()
 
             val response = client.newCall(request).execute()
