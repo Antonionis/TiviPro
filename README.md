@@ -15,6 +15,9 @@
   <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack%20Compose-purple" alt="Compose"></a>
 </p>
 
+> [!IMPORTANT]
+> ⚠️ **GoalTV no proporciona listas de reproducción ni ningún otro contenido digital.**
+
 ---
 
 ## 🌟 Características Principales
