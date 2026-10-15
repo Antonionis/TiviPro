@@ -18,7 +18,7 @@ fun GoalTvLogo(
     val logoHeight = (38 * sizeScale).dp
 
     Image(
-        painter = painterResource(id = R.drawable.icono),
+        painter = painterResource(id = R.drawable.logo2),
         contentDescription = "GoalTV Logo",
         contentScale = ContentScale.Fit,
         modifier = modifier.height(logoHeight)

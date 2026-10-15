@@ -14,7 +14,7 @@
 
     <!-- Center Round Logo for Fire TV & Android TV -->
     <item
-        android:drawable="@drawable/iconoredondo"
+        android:drawable="@drawable/logor300"
         android:gravity="center"
         android:top="20dp"
         android:bottom="20dp"
