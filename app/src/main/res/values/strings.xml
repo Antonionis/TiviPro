@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">GoalTV</string>
+    <string name="live_tv">TV EN DIRECTO</string>
+    <string name="movies_vod">CINE</string>
+    <string name="series">Series</string>
+    <string name="epg_guide">Guía EPG</string>
+    <string name="favorites">Favoritos</string>
+    <string name="settings_account">Ajustes / Cuenta</string>
+    <string name="login">Iniciar Sesión</string>
+    <string name="server_url">URL del Servidor</string>
+    <string name="username">Nombre de Usuario</string>
+    <string name="password">Contraseña</string>
+    <string name="demo_mode">Modo Demostración</string>
+    <string name="reload_list">Actualizar Lista</string>
+    <string name="account_status">Estado de Cuenta</string>
+    <string name="active_connections">Conexiones Activas</string>
+    <string name="expiration">Caducidad</string>
+    <string name="search_placeholder">Buscar&#8230;</string>
+    <string name="categories">Categorías</string>
+    <string name="all_channels">Todos los Canales</string>
+    <string name="play">Reproducir</string>
+    <string name="season">Temporada</string>
+    <string name="episode">Episodio</string>
+    <string name="aspect_ratio">Relación de Aspecto</string>
+    <string name="audio_subtitles">Audio y Subtítulos</string>
+    <string name="quality">Calidad</string>
+    <string name="screen_fit">Ajuste de Pantalla</string>
+    <string name="logout">Desconectarse</string>
+</resources>
