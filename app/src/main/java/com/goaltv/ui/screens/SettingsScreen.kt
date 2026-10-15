@@ -348,6 +348,7 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .height(44.dp),
                         shape = RoundedCornerShape(10.dp),
+                        enableScale = false,
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -401,6 +402,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
                         shape = RoundedCornerShape(8.dp),
+                        enableScale = false,
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -423,6 +425,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
                         shape = RoundedCornerShape(8.dp),
+                        enableScale = false,
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                     ) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -517,6 +520,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
+                    enableScale = false,
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -563,6 +567,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
+                    enableScale = false,
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
                 ) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -578,6 +583,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(44.dp),
                     shape = RoundedCornerShape(10.dp),
+                    enableScale = false,
                     colors = CardDefaults.cardColors(containerColor = StatusError),
                     focusedBorderColor = Color(0xFFFFD700)
                 ) {

@@ -35,13 +35,14 @@ fun FocusableCard(
     colors: CardColors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
     elevation: Dp = 4.dp,
     focusedBorderColor: Color? = null,
+    enableScale: Boolean = true,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.05f else 1.0f,
+        targetValue = if (isFocused && enableScale) 1.05f else 1.0f,
         animationSpec = tween(durationMillis = 150),
         label = "card_scale"
     )

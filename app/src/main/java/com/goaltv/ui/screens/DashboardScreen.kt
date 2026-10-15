@@ -630,7 +630,7 @@ fun MasterSearchDialog(
                         query = it
                         viewModel.updateSearchQuery(it)
                     },
-                    placeholder = { Text("Buscar canales, películas o series...", color = TextMuted) },
+                    placeholder = { Text("Buscar", color = TextMuted) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = OrangePrimary,
