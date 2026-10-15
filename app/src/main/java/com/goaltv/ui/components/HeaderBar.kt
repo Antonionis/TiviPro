@@ -191,9 +191,9 @@ fun ProtonVpnBadge(
     val badgeBg = if (isVpnActive) Color(0xFF0F2E1E) else SurfaceDarkCard
     val badgeContentColor = if (isVpnActive) StatusSuccess else TextSecondary
     val statusText = when {
-        isConnecting -> "ProtonVPN ⏳"
-        isVpnActive -> "ProtonVPN 🛡️ Activo"
-        else -> "ProtonVPN"
+        isConnecting -> "VPN ⏳"
+        isVpnActive -> "VPN 🛡️ Activo"
+        else -> "VPN"
     }
 
     FocusableCard(

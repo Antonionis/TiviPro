@@ -265,14 +265,13 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Section: ProtonVPN
+        // Section: VPN
         val isVpnActive by com.goaltv.data.network.ProtonVpnManager.isVpnActive.collectAsState()
-        val vpnStatusMsg by com.goaltv.data.network.ProtonVpnManager.vpnStatusMessage.collectAsState()
         val settingsContext = LocalContext.current
         val settingsScope = rememberCoroutineScope()
 
         SettingsCard(
-            title = "PROTONVPN (PROTONVPN.COM)",
+            title = "VPN",
             icon = Icons.Rounded.Security
         ) {
             Row(
@@ -286,16 +285,10 @@ fun SettingsScreen(
                         .padding(end = 12.dp)
                 ) {
                     Text(
-                        text = "Cuenta: ${com.goaltv.data.network.ProtonVpnManager.PROTON_ACCOUNT}",
+                        text = if (isVpnActive) "Estado: VPN Conectado" else "Estado: VPN Desconectado",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Estado: $vpnStatusMsg",
-                        fontSize = 11.sp,
-                        color = if (isVpnActive) StatusSuccess else TextMuted
+                        color = if (isVpnActive) StatusSuccess else Color.White
                     )
                 }
 

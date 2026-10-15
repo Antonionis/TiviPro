@@ -84,8 +84,10 @@ class SportsRepositoryImpl : SportsRepository {
 
                 var idCounter = 1
                 sections.forEachIndexed { sectionIdx, sectionContent ->
+                    if (sectionIdx == 0) return@forEachIndexed
+
                     val dateTab = when (sectionIdx) {
-                        0, 1 -> "Hoy"
+                        1 -> "Hoy"
                         2 -> "Mañana"
                         else -> "Próximos Días"
                     }

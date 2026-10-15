@@ -242,13 +242,13 @@ fun LoginScreen(
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Column {
                                         Text(
-                                            text = "ProtonVPN (protonvpn.com)",
+                                            text = "VPN",
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
                                         Text(
-                                            text = if (isVpnActive) "ProtonVPN Conectado (goalspain@gmail.com)" else "ProtonVPN Desconectado",
+                                            text = if (isVpnActive) "Estado: VPN Conectado" else "Estado: VPN Desconectado",
                                             fontSize = 10.sp,
                                             color = if (isVpnActive) StatusSuccess else TextMuted
                                         )
