@@ -135,12 +135,39 @@ class XtreamRepositoryImpl(
 
     private fun cleanCategoryName(rawName: String?): String {
         if (rawName.isNullOrBlank()) return "Uncategorized"
-        return rawName
+        var clean = rawName
             .replace(Regex("""(?i)^\s*EU\s*-\s*ES\b\s*:?"""), "")
             .replace(Regex("""(?i)^\s*EU-ES\b\s*:?"""), "")
+            .replace(Regex("""(?i)^\s*EU\s+ES-?\s*"""), "")
             .replace(Regex("""(?i)^\s*ES\s*-\s*ES\b\s*:?"""), "")
             .replace(Regex("""(?i)^\s*ES\s*-\s*"""), "")
             .replace(Regex("""(?i)^\s*\|?\s*ES\s*\|\s*"""), "")
+            .trim()
+
+        clean = when (clean.uppercase()) {
+            "MCINEMA", "M CINEMA", "M-CINEMA" -> "CINE"
+            "M SERIES", "MSERIES", "M-SERIES" -> "SERIES"
+            "24/7 ALQUILLER" -> "24/7 ALQUILER"
+            "ANIMACCION", "ANIMACCIÓN" -> "ANIMACIÓN"
+            else -> clean
+        }
+
+        return clean.ifBlank { rawName.trim() }
+    }
+
+    private fun cleanChannelDisplayName(rawName: String?): String {
+        if (rawName.isNullOrBlank()) return "Channel"
+        return rawName
+            .replace(Regex("""(?i)^\s*\((?:ES|ESP)\)\s*"""), "")
+            .replace(Regex("""(?i)^\s*\[(?:ES|ESP)]\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\s*-\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES-\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES:\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\|\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\s+4k-?\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\s+fhd-?\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\s+hd-?\s*"""), "")
+            .replace(Regex("""(?i)^\s*ES\s+(?=[A-Za-z0-9])"""), "")
             .trim()
             .ifBlank { rawName.trim() }
     }
@@ -180,7 +207,7 @@ class XtreamRepositoryImpl(
 
                 LiveChannel(
                     id = rawId,
-                    name = dto.name ?: "Channel $rawId",
+                    name = cleanChannelDisplayName(dto.name),
                     iconUrl = dto.streamIcon,
                     streamUrl = streamUrl,
                     categoryId = dto.categoryId ?: "0",

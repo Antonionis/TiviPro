@@ -316,8 +316,9 @@ class DataRepositoryImpl(
             // 1. Try Internal Files Dir
             try {
                 appContext?.let { ctx ->
-                    val intFile = java.io.File(ctx.filesDir, "goaltv_backup.json")
-                    intFile.writeText(jsonStr)
+                    val file = java.io.File(ctx.filesDir, "goaltv_backup.json")
+                    if (file.exists()) file.delete()
+                    file.writeText(jsonStr)
                     savedAtLeastOne = true
                 }
             } catch (e: Exception) {
@@ -329,9 +330,10 @@ class DataRepositoryImpl(
                 appContext?.let { ctx ->
                     val extDir = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: ctx.getExternalFilesDir(null)
                     if (extDir != null) {
-                        extDir.mkdirs()
-                        val extFile = java.io.File(extDir, "goaltv_backup.json")
-                        extFile.writeText(jsonStr)
+                        if (!extDir.exists()) extDir.mkdirs()
+                        val file = java.io.File(extDir, "goaltv_backup.json")
+                        if (file.exists()) file.delete()
+                        file.writeText(jsonStr)
                         savedAtLeastOne = true
                     }
                 }
@@ -345,6 +347,7 @@ class DataRepositoryImpl(
                 if (downloadsDir != null) {
                     if (!downloadsDir.exists()) downloadsDir.mkdirs()
                     val file = java.io.File(downloadsDir, "goaltv_backup.json")
+                    if (file.exists()) file.delete()
                     file.writeText(jsonStr)
                     savedAtLeastOne = true
                 }
