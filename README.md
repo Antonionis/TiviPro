@@ -9,7 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GoalSpain/goaltv/releases/latest"><img src="https://img.shields.io/github/v/release/GoalSpain/goaltv?color=orange&label=Última%20Versión" alt="GitHub Release"></a>
   <a href="https://developer.android.com/"><img src="https://img.shields.io/badge/Platform-Android%20%7C%20Android%20TV-green" alt="Platform"></a>
   <a href="https://kotlinlang.org/"><img src="https://img.shields.io/badge/Language-Kotlin%202.2-blue" alt="Language"></a>
   <a href="https://developer.android.com/jetpack/compose"><img src="https://img.shields.io/badge/UI-Jetpack%20Compose-purple" alt="Compose"></a>
@@ -23,13 +22,13 @@
 ## 🌟 Características Principales
 
 ### 📺 TV en Directo & EPG Sincronizada 1:1
-* **Guía XMLTV Unificada (`guiaiptv.xml`)**: Sincronización horaria exacta en formato `Europe/Madrid`.
+* **Guía XMLTV Unificada**: Sincronización horaria exacta en formato `Europe/Madrid`.
 * **Indicadores en Tiempo Real**: Resaltado del programa activo con tono cálido, etiqueta **`EN DIRECTO`** y barra de progreso.
 * **Auto-desplazamiento**: Posiciona automáticamente el cursor en la emisión en directo al seleccionar un canal.
 * **Selección al Toque**: Tocar un canal selecciona su guía; tocar un canal seleccionado inicia la reproducción inmediatamente.
 
 ### ⚽ Programación Deportiva Actualizada al Día
-* **Guía de Eventos Marca TV**: Actualizada automáticamente todos los días con peticiones en vivo.
+* **Guía de Eventos**: Actualizada automáticamente todos los días con peticiones en vivo.
 * **Navegación Intuitiva**: Pestañas con fechas reales **`HOY (14 de Octubre)`** y **`MAÑANA (15 de Octubre)`**.
 * **Navegación por Mando D-Pad**: Conmutación rápida entre días con las teclas izquierda/derecha del mando a distancia.
 
