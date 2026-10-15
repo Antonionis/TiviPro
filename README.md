@@ -1,11 +1,11 @@
-# ⚽ GoalTV - Reproductor IPTV, Guía Deportiva y EPG Cifrada
+# ⚽ GoalTV - Reproductor IPTV con Guía Deportiva y EPG
 
 <p align="center">
   <img src="app/src/main/res/drawable/iconoredondo.webp" width="140" alt="GoalTV Logo" />
 </p>
 
 <p align="center">
-  <b>Aplicación IPTV de alta rendimiento para Android TV, Fire TV, Teléfonos Móviles y Tablets.</b>
+  <b>Aplicación IPTV de alto rendimiento para Android TV, Fire TV, Teléfonos Móviles y Tablets.</b>
 </p>
 
 <p align="center">
@@ -21,15 +21,15 @@
 
 ## 🌟 Características Principales
 
-### 📺 TV en Directo & EPG Sincronizada 1:1
+### 📺 TV en Directo & EPG Sincronizada
 * **Guía XMLTV Unificada**: Sincronización horaria exacta en formato `Europe/Madrid`.
 * **Indicadores en Tiempo Real**: Resaltado del programa activo con tono cálido, etiqueta **`EN DIRECTO`** y barra de progreso.
 * **Auto-desplazamiento**: Posiciona automáticamente el cursor en la emisión en directo al seleccionar un canal.
 * **Selección al Toque**: Tocar un canal selecciona su guía; tocar un canal seleccionado inicia la reproducción inmediatamente.
 
 ### ⚽ Programación Deportiva Actualizada al Día
-* **Guía de Eventos**: Actualizada automáticamente todos los días con peticiones en vivo.
-* **Navegación Intuitiva**: Pestañas con fechas reales **`HOY (14 de Octubre)`** y **`MAÑANA (15 de Octubre)`**.
+* **Guía de Eventos**: Actualizada automáticamente todos los días.
+* **Navegación Intuitiva**: Pestañas con fechas reales **`HOY`** y **`MAÑANA`**.
 * **Navegación por Mando D-Pad**: Conmutación rápida entre días con las teclas izquierda/derecha del mando a distancia.
 
 ### 🎬 Cine y Series (VOD)
@@ -39,21 +39,35 @@
 
 ### 🛡️ VPN Integrada
 * **Cifrado y Enrutamiento**: Pasarela VPN integrada para evitar bloqueos por parte de operadoras de internet.
-* **Actualización Automática**: Consulta y actualización dinámica de contraseñas de red.
 * **Acceso Multipantalla**: Conmutador accesible desde la pantalla de Inicio de Sesión, la Cabecera principal y Ajustes.
 
 ### 💾 Copia de Seguridad y Restauración Local
 * **Buscador de Archivos del Sistema**: Exportación e importación de favoritos y categorías en formato JSON (`goaltv_backup.json`).
-* **Reordenación de Categorías**: Reorganiza las categorías mediante botones dobles (`[ ⏫ ]` y `[ ⏬ ]`) y oculta canales no deseados.
+* **Reordenación de Categorías**: Reorganiza las categorías mediante botones dobles (`[ ⏫ ]` y `[ ⏬ ]`) y oculta grupos de canales no deseados.
 
 ---
 
 ## 📱 Capturas de Pantalla e Interfaz
 
-* **Menú Principal y Búsqueda Maestra**
+* **Menú Principal**
+<p align="center">
+  <img src="images/principal.jpg" width="500" alt="principal" />
+</p>
 * **Guía EPG en Directo**
+<p align="center">
+  <img src="images/epg.jpg" width="500" alt="epg" />
+</p>
 * **Programación Deportiva Diaria**
+<p align="center">
+  <img src="images/prog.jpg" width="500" alt="programacion" />
+</p>
 * **Gestión de Categorías y Ajustes**
+<p align="center">
+  <img src="images/gestioncat.jpg" width="500" alt="categorias" />
+</p>
+<p align="center">
+  <img src="images/ajustes.jpg" width="500" alt="ajustes" />
+</p>
 
 ---
 
