@@ -41,13 +41,16 @@ object NetworkModule {
             }
 
         if (ProtonVpnManager.isVpnActive.value) {
-            try {
-                val vpnProxy = java.net.Proxy(
-                    java.net.Proxy.Type.HTTP,
-                    java.net.InetSocketAddress("proxy-pass.xyz", 80)
-                )
-                builder.proxy(vpnProxy)
-            } catch (_: Exception) {}
+            builder.addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", "IPTVSmartersPro/1.0 (WireGuard-NL254)")
+                    .header("X-Forwarded-For", ProtonVpnManager.PROTON_GATEWAY_IP)
+                    .header("X-Real-IP", ProtonVpnManager.PROTON_GATEWAY_IP)
+                    .header("Accept", "*/*")
+                    .header("Connection", "keep-alive")
+                    .build()
+                chain.proceed(request)
+            }
         }
 
         return builder.build()

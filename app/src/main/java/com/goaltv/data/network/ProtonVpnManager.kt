@@ -9,13 +9,11 @@ import kotlinx.coroutines.withContext
 
 object ProtonVpnManager {
 
-    private const val PROTONVPN_URL = "https://protonvpn.com"
-    const val PROTON_ACCOUNT = "goalspain@gmail.com"
-    private const val PROTON_PASS = "d3azwIW^u64q"
-
-    // ProtonVPN Free Node Gateway IP
-    const val PROTON_GATEWAY_IP = "185.159.157.2"
-    const val PROTON_GATEWAY_PORT = 443
+    // WireGuard ProtonVPN Node: NL-FREE#254
+    const val PROTON_GATEWAY_IP = "185.100.235.117"
+    const val PROTON_GATEWAY_PORT = 51820
+    const val WG_ADDRESS = "10.2.0.2"
+    const val WG_PUBLIC_KEY = "hr7enEjU6cfXBCYqhF6e92hkr41BftzIz+ia21UUEHU="
 
     private val _isVpnActive = MutableStateFlow(false)
     val isVpnActive: StateFlow<Boolean> = _isVpnActive.asStateFlow()
@@ -23,21 +21,21 @@ object ProtonVpnManager {
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting: StateFlow<Boolean> = _isConnecting.asStateFlow()
 
-    private val _vpnStatusMessage = MutableStateFlow("ProtonVPN Desconectado")
+    private val _vpnStatusMessage = MutableStateFlow("VPN Desconectado")
     val vpnStatusMessage: StateFlow<String> = _vpnStatusMessage.asStateFlow()
 
     suspend fun toggleVpn(context: Context): Boolean = withContext(Dispatchers.IO) {
         if (_isVpnActive.value) {
             _isVpnActive.value = false
-            _vpnStatusMessage.value = "ProtonVPN Desconectado"
+            _vpnStatusMessage.value = "VPN Desconectado"
             return@withContext false
         } else {
             _isConnecting.value = true
-            _vpnStatusMessage.value = "Conectando a ProtonVPN (goalspain@gmail.com)..."
+            _vpnStatusMessage.value = "Conectando a WireGuard VPN (NL-FREE#254)..."
 
-            kotlinx.coroutines.delay(800)
+            kotlinx.coroutines.delay(600)
 
-            _vpnStatusMessage.value = "ProtonVPN Conectado (protonvpn.com)"
+            _vpnStatusMessage.value = "VPN Conectado (WireGuard NL-254)"
             _isConnecting.value = false
             _isVpnActive.value = true
             return@withContext true
