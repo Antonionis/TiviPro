@@ -497,6 +497,59 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Device Information Card
+        val deviceContext = LocalContext.current
+        val deviceId = remember { com.poltivi.data.network.DeviceManager.getDeviceId(deviceContext) }
+
+        SettingsCard(
+            title = "INFORMACIÓN DEL DISPOSITIVO E ID DE INSTALACIÓN",
+            icon = Icons.Rounded.Memory
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "ID Único de Instalación", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = deviceId,
+                        fontSize = 11.sp,
+                        color = OrangeGlow,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Modelo del Dispositivo", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = "${android.os.Build.MANUFACTURER.uppercase()} ${android.os.Build.MODEL}",
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Servidor Web de Gestión", fontSize = 12.sp, color = TextMuted)
+                    Text(
+                        text = "84.235.239.152",
+                        fontSize = 12.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(20.dp))
 
         // Section 4: Server & Account Actions
