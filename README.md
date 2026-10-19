@@ -90,4 +90,4 @@ Puedes descargar la última versión compilada lista para instalar en tu Smart T
 
 Este proyecto está distribuido bajo la licencia pública para uso personal y comunitario.
 
-Developed with ❤️ by **PolTivi**.
+Developed with ❤️ by Antonioni.
