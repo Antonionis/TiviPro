@@ -1,7 +1,7 @@
 # ⚽ PolTivi - Reproductor IPTV con Guía Deportiva y EPG
 
 <p align="center">
-  <img src="app/src/main/res/drawable/iconoredondo.webp" width="140" alt="PolTivi Logo" />
+  <img src="app/src/main/res/drawable/logo.png" width="140" alt="PolTivi Logo" />
 </p>
 
 <p align="center">
