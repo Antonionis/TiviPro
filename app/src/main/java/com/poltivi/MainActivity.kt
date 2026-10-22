@@ -5,15 +5,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.poltivi.data.network.DeviceManager
+import com.poltivi.data.repository.DataRepositoryImpl
 import com.poltivi.ui.PolTiviApp
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -21,15 +23,26 @@ class MainActivity : ComponentActivity() {
         } catch (_: Exception) {}
         enableEdgeToEdge()
 
-        // Ping management web server (84.235.239.152) with unique device ID on app startup
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                DeviceManager.pingManagementServer(this@MainActivity)
-            } catch (_: Exception) {}
-        }
+        // Llamar a la verificación del dispositivo al abrir la app
+        verificarDispositivo()
 
         setContent {
             PolTiviApp(modifier = Modifier.fillMaxSize())
+        }
+    }
+
+    fun verificarDispositivo() {
+        lifecycleScope.launch {
+            val status = DeviceManager.verificarDispositivo(this@MainActivity)
+            DataRepositoryImpl(applicationContext).setPremiumStatus(status.isPremium)
+            if (status.isBlocked) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Acceso denegado")
+                    .setMessage("Este dispositivo ha sido bloqueado.")
+                    .setCancelable(false)
+                    .setPositiveButton("Salir") { _, _ -> finish() }
+                    .show()
+            }
         }
     }
 }

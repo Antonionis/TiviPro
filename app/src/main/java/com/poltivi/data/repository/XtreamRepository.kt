@@ -37,6 +37,7 @@ interface XtreamRepository {
     fun buildLiveStreamUrl(serverUrl: String, username: String, password: String, streamId: String, extension: String = "ts"): String
     fun buildVodStreamUrl(serverUrl: String, username: String, password: String, streamId: String, extension: String = "mp4"): String
     fun buildSeriesStreamUrl(serverUrl: String, username: String, password: String, episodeId: String, extension: String = "mp4"): String
+    fun buildCatchupStreamUrl(serverUrl: String, username: String, password: String, streamId: String, startTimestampSec: Long, durationMinutes: Long, extension: String = "ts"): String
 }
 
 class XtreamRepositoryImpl(
@@ -56,31 +57,43 @@ class XtreamRepositoryImpl(
     }
 
     private fun normalizePlayerApiUrl(serverUrl: String): String {
-        var clean = serverUrl.trim().removeSuffix("/")
-        if (clean.endsWith(":80")) {
-            clean = clean.removeSuffix(":80")
-        }
+        var clean = serverUrl.trim()
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
             clean = "http://$clean"
         }
-        if (!clean.endsWith("player_api.php")) {
-            clean = "$clean/player_api.php"
-        }
-        return clean
+
+        try {
+            val uri = java.net.URI(clean)
+            val scheme = uri.scheme ?: "http"
+            val host = uri.host ?: ""
+            val port = uri.port
+            val portStr = if (port != -1 && port != 80 && port != 443) ":$port" else ""
+            if (host.isNotBlank()) {
+                clean = "$scheme://$host$portStr"
+            }
+        } catch (_: Exception) {}
+
+        return "$clean/player_api.php"
     }
 
     private fun formatBaseServerUrl(serverUrl: String): String {
-        var clean = serverUrl.trim().removeSuffix("/")
-        if (clean.endsWith(":80")) {
-            clean = clean.removeSuffix(":80")
-        }
+        var clean = serverUrl.trim()
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
             clean = "http://$clean"
         }
-        if (clean.endsWith("/player_api.php")) {
-            clean = clean.removeSuffix("/player_api.php")
-        }
-        return clean.removeSuffix("/")
+
+        try {
+            val uri = java.net.URI(clean)
+            val scheme = uri.scheme ?: "http"
+            val host = uri.host ?: ""
+            val port = uri.port
+            val portStr = if (port != -1 && port != 80 && port != 443) ":$port" else ""
+            if (host.isNotBlank()) {
+                return "$scheme://$host$portStr"
+            }
+        } catch (_: Exception) {}
+
+        return clean.removeSuffix("/player_api.php").removeSuffix("/")
     }
 
     override suspend fun authenticate(
@@ -90,13 +103,36 @@ class XtreamRepositoryImpl(
     ): Result<AuthResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val endpoint = normalizePlayerApiUrl(serverUrl)
-            val response = service.authenticate(endpoint, username, password)
-
-            if (!response.isSuccessful) {
-                throw Exception("Fallo de conexion con el servidor (HTTP ${response.code()})")
+            var response = try {
+                service.authenticate(endpoint, username, password)
+            } catch (e: Exception) {
+                if (endpoint.startsWith("https://")) {
+                    val httpEndpoint = endpoint.replace("https://", "http://")
+                    service.authenticate(httpEndpoint, username, password)
+                } else throw e
             }
 
-            val body = response.body() ?: throw Exception("Fallo de conexion con el servidor")
+            if (!response.isSuccessful && endpoint.startsWith("https://")) {
+                val httpEndpoint = endpoint.replace("https://", "http://")
+                try {
+                    val httpResp = service.authenticate(httpEndpoint, username, password)
+                    if (httpResp.isSuccessful) {
+                        response = httpResp
+                    }
+                } catch (_: Exception) {}
+            }
+
+            if (!response.isSuccessful) {
+                val code = response.code()
+                val msg = if (code == 502) {
+                    "Servidor IPTV inaccesible (HTTP 502 Bad Gateway). Compruebe la URL y puerto."
+                } else {
+                    "Fallo de conexión con el servidor (HTTP $code)"
+                }
+                throw Exception(msg)
+            }
+
+            val body = response.body() ?: throw Exception("Fallo de conexión con el servidor")
 
             val userInfoDto = body.userInfo
             val serverInfoDto = body.serverInfo
@@ -205,6 +241,17 @@ class XtreamRepositoryImpl(
                 if (rawId.isBlank()) return@mapNotNull null
                 val streamUrl = buildLiveStreamUrl(baseUrl, username, password, rawId, "ts")
 
+                val archiveVal = when (val a = dto.tvArchive) {
+                    is Number -> a.toInt()
+                    is String -> a.toIntOrNull() ?: 0
+                    else -> 0
+                }
+                val durationVal = when (val d = dto.tvArchiveDuration) {
+                    is Number -> d.toInt()
+                    is String -> d.toIntOrNull() ?: 0
+                    else -> 0
+                }
+
                 LiveChannel(
                     id = rawId,
                     name = cleanChannelDisplayName(dto.name),
@@ -213,10 +260,32 @@ class XtreamRepositoryImpl(
                     categoryId = dto.categoryId ?: "0",
                     epgId = dto.epgChannelId,
                     streamType = dto.streamType ?: "live",
-                    channelNumber = dto.num
+                    channelNumber = dto.num,
+                    tvArchive = archiveVal,
+                    tvArchiveDuration = durationVal
                 )
             }
         }
+    }
+
+    override fun buildCatchupStreamUrl(
+        serverUrl: String,
+        username: String,
+        password: String,
+        streamId: String,
+        startTimestampSec: Long,
+        durationMinutes: Long,
+        extension: String
+    ): String {
+        val base = formatBaseServerUrl(serverUrl)
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+            timeInMillis = startTimestampSec * 1000L
+        }
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd:HH-mm", java.util.Locale.US).apply {
+            timeZone = java.util.TimeZone.getTimeZone("UTC")
+        }
+        val startFormatted = sdf.format(cal.time)
+        return "$base/timeshift/$username/$password/$durationMinutes/$startFormatted/$streamId.$extension"
     }
 
     override suspend fun getVodCategories(
@@ -482,12 +551,12 @@ class XtreamRepositoryImpl(
         return try {
             val bytes = Base64.decode(text, Base64.DEFAULT)
             val decoded = String(bytes, Charsets.UTF_8)
-            if (decoded.all { it.code in 32..126 || it == '\n' || it == '\r' || it == '\t' }) {
+            if (decoded.none { it.code in 0..8 || it.code in 11..12 || it.code in 14..31 }) {
                 decoded
             } else {
                 text
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             text
         }
     }

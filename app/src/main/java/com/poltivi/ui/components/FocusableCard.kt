@@ -18,14 +18,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.poltivi.ui.theme.OrangeGlow
-import com.poltivi.ui.theme.OrangePrimary
 import com.poltivi.ui.theme.SurfaceDarkCard
+
+val FocusBlue = Color(0xFF00D2FF)
 
 @Composable
 fun FocusableCard(
@@ -35,7 +34,8 @@ fun FocusableCard(
     colors: CardColors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
     elevation: Dp = 4.dp,
     focusedBorderColor: Color? = null,
-    enableScale: Boolean = true,
+    unfocusedBorder: BorderStroke? = null,
+    enableScale: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -53,7 +53,7 @@ fun FocusableCard(
         label = "card_shadow"
     )
 
-    val activeBorderColor = focusedBorderColor ?: OrangePrimary
+    val activeBorderColor = focusedBorderColor ?: FocusBlue
 
     Card(
         modifier = modifier
@@ -77,7 +77,7 @@ fun FocusableCard(
                 color = activeBorderColor
             )
         } else {
-            BorderStroke(1.dp, Color(0xFF2E2E40))
+            unfocusedBorder ?: BorderStroke(1.dp, Color(0xFF2E2E40))
         }
     ) {
         Box {

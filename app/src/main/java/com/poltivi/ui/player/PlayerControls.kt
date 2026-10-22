@@ -13,12 +13,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,6 +37,7 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -89,6 +94,9 @@ fun PlayerControls(
     subtitleTracks: List<TrackOption>,
     qualityOptions: List<QualityOption>,
     toastMessage: String?,
+    audioDelayMs: Int = 0,
+    isPremium: Boolean = false,
+    onAudioDelayChange: (Int) -> Unit = {},
     onPlayPauseToggle: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onRewind10s: () -> Unit,
@@ -307,44 +315,49 @@ fun PlayerControls(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Previous
-                    IconButton(
+                    FocusableCard(
                         onClick = onPreviousClick,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceDarkCard)
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.SkipPrevious,
-                            contentDescription = "Anterior",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.SkipPrevious,
+                                contentDescription = "Anterior",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
 
                     // Rewind 10s
-                    IconButton(
+                    FocusableCard(
                         onClick = onRewind10s,
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
                         modifier = Modifier
                             .focusRequester(rewindFocusRequester)
                             .focusProperties {
                                 right = playPauseFocusRequester
                             }
                             .size(44.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceDarkCard)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Replay10,
-                            contentDescription = "Retroceder 10s",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Replay10,
+                                contentDescription = "Retroceder 10s",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
 
                     // Large Play / Pause Button
-                    IconButton(
+                    FocusableCard(
                         onClick = onPlayPauseToggle,
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = OrangePrimary),
                         modifier = Modifier
                             .focusRequester(playPauseFocusRequester)
                             .focusProperties {
@@ -352,21 +365,22 @@ fun PlayerControls(
                                 right = forwardFocusRequester
                             }
                             .size(64.dp)
-                            .shadow(16.dp, CircleShape, ambientColor = OrangeGlow, spotColor = OrangePrimary)
-                            .clip(CircleShape)
-                            .background(OrangePrimary)
                     ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                            tint = Color.White,
-                            modifier = Modifier.size(38.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                                tint = Color.White,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        }
                     }
 
                     // Fast Forward 10s
-                    IconButton(
+                    FocusableCard(
                         onClick = onForward10s,
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
                         modifier = Modifier
                             .focusRequester(forwardFocusRequester)
                             .focusProperties {
@@ -374,31 +388,32 @@ fun PlayerControls(
                                 right = aspectRatioFocusRequester
                             }
                             .size(44.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceDarkCard)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Forward10,
-                            contentDescription = "Adelantar 10s",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Forward10,
+                                contentDescription = "Adelantar 10s",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
 
                     // Next
-                    IconButton(
+                    FocusableCard(
                         onClick = onNextClick,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceDarkCard)
+                        shape = CircleShape,
+                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                        modifier = Modifier.size(44.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.SkipNext,
-                            contentDescription = "Siguiente",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.SkipNext,
+                                contentDescription = "Siguiente",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
@@ -486,19 +501,24 @@ fun PlayerControls(
                         // Left actions: EPG Drawer toggle
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (isLive) {
-                                TextButton(
+                                FocusableCard(
                                     onClick = onToggleDrawer,
                                     shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.background(SurfaceDarkCard, RoundedCornerShape(8.dp))
+                                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Tv,
-                                        contentDescription = "Guía de Canales",
-                                        tint = OrangePrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Text("CANALES", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Tv,
+                                            contentDescription = "Guía de Canales",
+                                            tint = OrangePrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text("CANALES", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
@@ -506,43 +526,55 @@ fun PlayerControls(
                         // Right actions: Aspect Ratio, Audio/Subtitles, Quality
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             // Aspect Ratio Button
-                            TextButton(
+                            FocusableCard(
                                 onClick = onToggleAspectRatio,
                                 shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
                                 modifier = Modifier
                                     .focusRequester(aspectRatioFocusRequester)
                                     .focusProperties {
                                         left = forwardFocusRequester
                                         right = subtitlesFocusRequester
                                     }
-                                    .background(SurfaceDarkCard, RoundedCornerShape(8.dp))
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.AspectRatio,
-                                    contentDescription = "Relación de Aspecto",
-                                    tint = OrangeGlow,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(aspectRatioMode.label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AspectRatio,
+                                        contentDescription = "Relación de Aspecto",
+                                        tint = OrangeGlow,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(aspectRatioMode.label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
 
                             // Audio & Subtitles
-                            IconButton(
+                            FocusableCard(
                                 onClick = { showAudioSubtitleDialog = true },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
                                 modifier = Modifier
+                                    .size(36.dp)
                                     .focusRequester(subtitlesFocusRequester)
                                     .focusProperties {
                                         left = aspectRatioFocusRequester
                                     }
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(SurfaceDarkCard)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Subtitles,
-                                    contentDescription = "Audio y Subtítulos",
-                                    tint = Color.White
-                                )
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Subtitles,
+                                        contentDescription = "Audio y Subtítulos",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -555,6 +587,9 @@ fun PlayerControls(
             AudioSubtitleSelectionDialog(
                 audioTracks = audioTracks,
                 subtitleTracks = subtitleTracks,
+                audioDelayMs = audioDelayMs,
+                isPremium = isPremium,
+                onAudioDelayChange = onAudioDelayChange,
                 onSelectAudio = {
                     onSelectAudioTrack(it)
                     showAudioSubtitleDialog = false
@@ -585,42 +620,142 @@ fun PlayerControls(
 fun AudioSubtitleSelectionDialog(
     audioTracks: List<TrackOption>,
     subtitleTracks: List<TrackOption>,
+    audioDelayMs: Int = 0,
+    isPremium: Boolean = false,
+    onAudioDelayChange: (Int) -> Unit = {},
     onSelectAudio: (TrackOption) -> Unit,
     onSelectSubtitle: (TrackOption?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val zeroFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        try {
+            delay(100)
+            zeroFocusRequester.requestFocus()
+        } catch (_: Exception) {}
+    }
+
+    fun handleAudioSyncChange(newDelay: Int) {
+        if (!isPremium) {
+            android.widget.Toast.makeText(
+                context,
+                "Sincronización de audio disponible solo en la versión Premium",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            onAudioDelayChange(newDelay)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
         title = {
-            Text("Pistas de Audio y Subtítulos", color = Color.White, fontWeight = FontWeight.Bold)
+            Text("Audio, Subtítulos y Sincronización", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
         },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
+                    .heightIn(max = 420.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
+                // AUDIO SYNC CONTROL
+                Text("SINCRONIZACIÓN DE AUDIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Desfase actual: ${if (audioDelayMs > 0) "+$audioDelayMs ms" else "$audioDelayMs ms"}",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        FocusableCard(
+                            onClick = { handleAudioSyncChange(audioDelayMs - 250) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("-250ms", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    item {
+                        FocusableCard(
+                            onClick = { handleAudioSyncChange(audioDelayMs - 100) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("-100ms", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    item {
+                        FocusableCard(
+                            onClick = { handleAudioSyncChange(0) },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.focusRequester(zeroFocusRequester),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF33334A))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("0ms (Reset)", fontSize = 11.sp, color = OrangeGlow, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    item {
+                        FocusableCard(
+                            onClick = { handleAudioSyncChange(audioDelayMs + 100) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("+100ms", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    item {
+                        FocusableCard(
+                            onClick = { handleAudioSyncChange(audioDelayMs + 250) },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                        ) {
+                            Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                                Text("+250ms", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Text("PISTAS DE AUDIO", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                 Spacer(modifier = Modifier.height(4.dp))
                 if (audioTracks.isEmpty()) {
-                    Text("Pista de Audio Predeterminada", fontSize = 13.sp, color = TextMuted)
+                    Text("Pista de Audio Predeterminada", fontSize = 12.sp, color = TextMuted)
                 } else {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(audioTracks) { track ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        audioTracks.forEach { track ->
                             FocusableCard(
                                 onClick = { onSelectAudio(track) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                colors = CardDefaults.cardColors(
                                     containerColor = if (track.isSelected) OrangePrimary else SurfaceDarkCard
                                 )
                             ) {
                                 Text(
                                     text = track.name,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     color = Color.White,
                                     modifier = Modifier.padding(8.dp)
                                 )
@@ -629,38 +764,35 @@ fun AudioSubtitleSelectionDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Text("PISTAS DE SUBTÍTULOS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = OrangePrimary)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 FocusableCard(
                     onClick = { onSelectSubtitle(null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
                 ) {
-                    Text("Desactivado (Sin Subtítulos)", fontSize = 13.sp, color = Color.White, modifier = Modifier.padding(8.dp))
+                    Text("Desactivado (Sin Subtítulos)", fontSize = 12.sp, color = Color.White, modifier = Modifier.padding(8.dp))
                 }
 
                 if (subtitleTracks.isNotEmpty()) {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        items(subtitleTracks) { track ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        subtitleTracks.forEach { track ->
                             FocusableCard(
                                 onClick = { onSelectSubtitle(track) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.CardDefaults.cardColors(
+                                colors = CardDefaults.cardColors(
                                     containerColor = if (track.isSelected) OrangePrimary else SurfaceDarkCard
                                 )
                             ) {
                                 Text(
                                     text = track.name,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     color = Color.White,
                                     modifier = Modifier.padding(8.dp)
                                 )
@@ -672,7 +804,7 @@ fun AudioSubtitleSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cerrar", color = OrangeGlow)
+                Text("Cerrar", color = OrangeGlow, fontWeight = FontWeight.Bold)
             }
         }
     )

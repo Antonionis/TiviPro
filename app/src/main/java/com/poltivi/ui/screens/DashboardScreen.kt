@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Tv
@@ -47,6 +48,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -267,14 +270,27 @@ fun DashboardScreen(
                             .focusRequester(deportesFocusRequester)
                     )
 
-                    // Tile 2: ACTUALIZAR LISTA
+                    // Tile 2: CATCH-UP (DIFERIDO)
+                    val dashboardScope = rememberCoroutineScope()
                     StackedVioletTile(
-                        title = "ACTUALIZAR LISTA",
+                        title = "CATCH-UP (DIFERIDO)",
                         subtitle = "",
-                        icon = Icons.Rounded.Refresh,
+                        icon = Icons.Rounded.Schedule,
                         isCompact = isCompactWidth || isCompactHeight,
-                        isAnimating = isReloading,
-                        onClick = { viewModel.reloadPlaylist() },
+                        onClick = {
+                            dashboardScope.launch {
+                                val catchupChs = viewModel.repository.getCatchupChannels()
+                                if (catchupChs.isEmpty()) {
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "El servidor o proveedor actual no dispone de canales con servicio Catch-Up.",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    viewModel.navigateTo(AppScreen.CATCHUP)
+                                }
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)

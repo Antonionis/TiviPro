@@ -15,10 +15,14 @@ android {
         applicationId = "com.poltivi"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.4"
+        versionCode = 5
+        versionName = "1.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+        }
     }
 
     signingConfigs {
@@ -55,8 +59,12 @@ android {
             if (ksFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     packaging {
@@ -66,7 +74,21 @@ android {
                 "META-INF/DEPENDENCIES",
                 "META-INF/LICENSE*",
                 "META-INF/NOTICE*",
-                "META-INF/*.kotlin_module"
+                "META-INF/*.kotlin_module",
+                "META-INF/maven/**",
+                "META-INF/proguard/**",
+                "**/attach_hotspot_windows.dll",
+                "META-INF/licenses/**",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1"
+            )
+        }
+        jniLibs {
+            excludes += listOf(
+                "**/gdb.setup",
+                "**/gdbserver",
+                "**/*.la",
+                "**/*.a"
             )
         }
     }

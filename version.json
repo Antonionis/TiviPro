@@ -1,6 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.4",
-  "download_url": "https://github.com/poltivi/poltivi/releases/download/v1.4/poltivi.apk",
-  "changelog": "• PolTivi v1.4 Versión Oficial\n• Ocultación de prefijos EU- ES en categorías\n• Limpieza de nombres de canales y mejoras en Android TV"
+  "versionCode": 5,
+  "versionName": "1.5",
+  "download_url": "https://github.com/Antonionis/PolTivi/releases/download/v1.5/poltivi.apk",
+  "changelog": "• PolTivi v1.5 Versión Oficial\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
 }

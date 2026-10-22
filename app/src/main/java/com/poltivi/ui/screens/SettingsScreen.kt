@@ -34,10 +34,11 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SystemUpdate
@@ -47,9 +48,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import com.poltivi.data.repository.DataSourceMode
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import com.poltivi.data.network.UpdateInfo
 import com.poltivi.data.network.UpdateManager
 import com.poltivi.ui.components.UpdateDialog
@@ -84,6 +89,7 @@ import com.poltivi.ui.theme.TextMuted
 import com.poltivi.ui.theme.TextSecondary
 import com.poltivi.ui.viewmodel.AppScreen
 import com.poltivi.ui.viewmodel.MainViewModel
+import coil.compose.AsyncImage
 
 @Composable
 fun SettingsScreen(
@@ -96,16 +102,23 @@ fun SettingsScreen(
         onBackClick()
     }
 
+    val isPremium by viewModel.repository.isPremium.collectAsState()
+
     var selectedDecoder by remember { mutableStateOf("Hardware (HW)") }
     var selectedAspectRatio by remember { mutableStateOf("Ajustar a Pantalla") }
     var selectedBuffer by remember { mutableStateOf("Mediano (3s)") }
 
     var categories by remember { mutableStateOf<List<com.poltivi.model.Category>>(emptyList()) }
-    var hiddenCategoryIds by remember { mutableStateOf(viewModel.repository.getHiddenCategoryIds()) }
+    var hiddenCategoryIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         try {
+            val status = com.poltivi.data.network.DeviceManager.verificarDispositivo(context)
+            viewModel.repository.setPremiumStatus(status.isPremium)
             categories = viewModel.repository.getAllLiveCategories()
+            hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
         } catch (_: Exception) {}
     }
 
@@ -265,6 +278,220 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        // Section 4: FUENTE DE GUÍA DE PROGRAMACIÓN (EPG)
+        val currentEpgSource by viewModel.repository.epgSourceMode.collectAsState()
+
+        SettingsCard(
+            title = "FUENTE DE GUÍA DE PROGRAMACIÓN (EPG)",
+            icon = Icons.Rounded.Schedule,
+            iconTint = Color(0xFF0088FF)
+        ) {
+            Column {
+                Text(
+                    text = "Selecciona el origen de la guía EPG para la lista de canales de TV:",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val sources = listOf(
+                        com.poltivi.data.repository.EpgSourceMode.POLTIVI to "PolTivi (Guía Integrada)",
+                        com.poltivi.data.repository.EpgSourceMode.PROVIDER to "Proveedor IPTV (Servidor)"
+                    )
+                    sources.forEach { (mode, label) ->
+                        val isSelected = currentEpgSource == mode
+                        FocusableCard(
+                            onClick = { viewModel.repository.setEpgSourceMode(mode) },
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .background(if (isSelected) Color(0xFF0088FF) else Color(0xFF1F1F30))
+                                    .border(
+                                        width = if (isSelected) 0.dp else 1.dp,
+                                        color = if (isSelected) Color.Transparent else Color(0xFF33334A),
+                                        shape = RoundedCornerShape(20.dp)
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (isSelected) Color.White else TextSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Section: Gestión de Múltiples Playlists
+        var savedPlaylists by remember { mutableStateOf<List<com.poltivi.model.SavedPlaylist>>(emptyList()) }
+        var showAddPlaylistDialog by remember { mutableStateOf(false) }
+        var editingPlaylist by remember { mutableStateOf<com.poltivi.model.SavedPlaylist?>(null) }
+        var playlistStatusMessage by remember { mutableStateOf<String?>(null) }
+        val settingsScope = rememberCoroutineScope()
+
+        LaunchedEffect(Unit) {
+            try {
+                savedPlaylists = viewModel.repository.getSavedPlaylists()
+            } catch (_: Exception) {}
+        }
+
+        if (showAddPlaylistDialog) {
+            AddPlaylistDialog(
+                initialPlaylist = editingPlaylist,
+                onSave = { newPl ->
+                    viewModel.repository.savePlaylist(newPl)
+                    savedPlaylists = viewModel.repository.getSavedPlaylists()
+                    showAddPlaylistDialog = false
+                    editingPlaylist = null
+                    settingsScope.launch {
+                        playlistStatusMessage = "Conectando a ${newPl.name}..."
+                        val ok = viewModel.repository.switchPlaylist(newPl.id)
+                        playlistStatusMessage = if (ok) "Conectado con éxito a ${newPl.name}" else "Error al conectar a ${newPl.name}"
+                        savedPlaylists = viewModel.repository.getSavedPlaylists()
+                    }
+                },
+                onDismiss = {
+                    showAddPlaylistDialog = false
+                    editingPlaylist = null
+                }
+            )
+        }
+
+        SettingsCard(
+            title = "GESTIÓN DE MÚLTIPLES PLAYLISTS / LISTAS",
+            icon = Icons.Rounded.ListAlt
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Añade varios servidores o listas M3U/M3U8 y cambia entre ellos rápidamente.",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+
+                savedPlaylists.forEach { pl ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SurfaceDarkCard, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = pl.name,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 13.sp
+                                )
+                                if (pl.isActive) {
+                                    Surface(color = Color(0xFF00C853), shape = RoundedCornerShape(4.dp)) {
+                                        Text("ACTIVA", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                            }
+                            Text(
+                                text = if (pl.mode == DataSourceMode.XTREAM) "Xtream: ${pl.serverUrl}" else "M3U: ${pl.m3uUrl}",
+                                fontSize = 10.sp,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (!pl.isActive) {
+                                FocusableCard(
+                                    onClick = {
+                                        settingsScope.launch {
+                                            playlistStatusMessage = "Conectando a ${pl.name}..."
+                                            val ok = viewModel.repository.switchPlaylist(pl.id)
+                                            playlistStatusMessage = if (ok) "Cambiado con éxito a ${pl.name}" else "Error al conectar a ${pl.name}"
+                                            savedPlaylists = viewModel.repository.getSavedPlaylists()
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                                ) {
+                                    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                        Text("USAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
+
+                            FocusableCard(
+                                onClick = {
+                                    editingPlaylist = pl
+                                    showAddPlaylistDialog = true
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                            ) {
+                                Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                    Text("EDITAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+
+                            if (!pl.isActive) {
+                                FocusableCard(
+                                    onClick = {
+                                        viewModel.repository.deletePlaylist(pl.id)
+                                        savedPlaylists = viewModel.repository.getSavedPlaylists()
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF3A1E28))
+                                ) {
+                                    Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                                        Text("BORRAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF3366))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                FocusableCard(
+                    onClick = {
+                        val maxAllowed = if (isPremium) 5 else 1
+                        if (savedPlaylists.size >= maxAllowed) {
+                            playlistStatusMessage = if (isPremium) {
+                                "Límite de listas Premium alcanzado (máximo 5 listas)."
+                            } else {
+                                "Límite alcanzado: La versión gratuita permite 1 lista. Pásate a Premium para añadir hasta 5 listas."
+                            }
+                        } else {
+                            editingPlaylist = null
+                            showAddPlaylistDialog = true
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("+ AÑADIR NUEVA LISTA / SERVIDOR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                    }
+                }
+
+                playlistStatusMessage?.let { msg ->
+                    Text(text = msg, color = OrangeGlow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         // Section 5: Gestión y Orden de Categorías
         var showCategoryDialog by remember { mutableStateOf(false) }
 
@@ -272,6 +499,7 @@ fun SettingsScreen(
             CategoryManagementDialog(
                 categories = categories,
                 hiddenCategoryIds = hiddenCategoryIds,
+                isPremium = isPremium,
                 onToggleHidden = { catId ->
                     viewModel.repository.toggleCategoryHidden(catId)
                     hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
@@ -315,21 +543,8 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Section 6: Backup Local con Buscador de Archivos
+        // Section 6: Backup Local
         var backupMessage by remember { mutableStateOf<String?>(null) }
-        val backupContext = LocalContext.current
-        val backupScope = rememberCoroutineScope()
-
-        val importLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.OpenDocument()
-        ) { uri: Uri? ->
-            if (uri != null) {
-                backupScope.launch {
-                    val success = viewModel.importBackupFromUri(backupContext, uri)
-                    backupMessage = if (success) "Ajustes y favoritos restaurados con éxito" else "Error al restaurar copia local"
-                }
-            }
-        }
 
         SettingsCard(
             title = "COPIA DE SEGURIDAD Y RESTAURACIÓN LOCAL",
@@ -337,7 +552,7 @@ fun SettingsScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Guarda tu selección de favoritos y el orden de canales para restaurarlo facilmente cuando quieras",
+                    text = "Guarda tu selección de favoritos y el orden de canales para restaurarlo fácilmente cuando quieras",
                     fontSize = 12.sp,
                     color = TextMuted
                 )
@@ -347,9 +562,13 @@ fun SettingsScreen(
                 ) {
                     FocusableCard(
                         onClick = {
+                            if (!isPremium) {
+                                backupMessage = "Función disponible solo en la versión Premium"
+                                return@FocusableCard
+                            }
                             val success = viewModel.repository.exportLocalBackup()
                             backupMessage = if (success) {
-                                "Copia de seguridad guardada con éxito en la carpeta Descargas (poltivi_backup.json)"
+                                "Copia de seguridad guardada con éxito en Descargas (poltivi_backup.json)"
                             } else {
                                 "Error al guardar copia local de ajustes"
                             }
@@ -366,15 +585,15 @@ fun SettingsScreen(
 
                     FocusableCard(
                         onClick = {
-                            try {
-                                importLauncher.launch(arrayOf("application/json", "*/*"))
-                            } catch (_: Exception) {
-                                val success = viewModel.repository.importLocalBackup()
-                                backupMessage = if (success) {
-                                    "Ajustes y favoritos restaurados con éxito"
-                                } else {
-                                    "No se encontró copia local para restaurar"
-                                }
+                            if (!isPremium) {
+                                backupMessage = "Función disponible solo en la versión Premium"
+                                return@FocusableCard
+                            }
+                            val success = viewModel.repository.importLocalBackup()
+                            if (success) {
+                                backupMessage = "Ajustes y favoritos restaurados con éxito desde Descargas (poltivi_backup.json)"
+                            } else {
+                                backupMessage = "No se encontró el archivo poltivi_backup.json en Descargas"
                             }
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
@@ -405,16 +624,36 @@ fun SettingsScreen(
         var isCheckingUpdate by remember { mutableStateOf(false) }
         var updateStatusMessage by remember { mutableStateOf<String?>(null) }
         var manualUpdateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+        var showCurrentReleaseNotes by remember { mutableStateOf(false) }
         val updateContext = LocalContext.current
         val updateScope = rememberCoroutineScope()
+        val deviceId = remember { com.poltivi.data.network.DeviceManager.getDeviceId(updateContext) }
 
         val appVersionName = remember {
             try {
                 val pInfo = updateContext.packageManager.getPackageInfo(updateContext.packageName, 0)
-                pInfo.versionName ?: "1.0"
+                pInfo.versionName ?: "1.5"
             } catch (_: Exception) {
-                "1.0"
+                "1.5"
             }
+        }
+
+        val currentReleaseNotesInfo = remember(appVersionName) {
+            UpdateInfo(
+                isUpdateAvailable = false,
+                versionCode = 5,
+                versionName = appVersionName,
+                apkUrl = "",
+                changelog = "• PolTivi v$appVersionName Versión Oficial\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+            )
+        }
+
+        if (showCurrentReleaseNotes) {
+            UpdateDialog(
+                updateInfo = currentReleaseNotesInfo,
+                onDismiss = { showCurrentReleaseNotes = false },
+                isReleaseNotesOnly = true
+            )
         }
 
         if (manualUpdateInfo != null) {
@@ -441,18 +680,47 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1f).padding(end = 8.dp)
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF2A2A40))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "Versión actual: v$appVersionName",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = OrangeGlow
-                        )
+                        if (isPremium) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.poltivi.R.drawable.sello),
+                                contentDescription = "Sello Premium",
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
+
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "ID: $deviceId",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OrangeGlow
+                            )
+
+                            FocusableCard(
+                                onClick = { showCurrentReleaseNotes = true },
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFF2A2A40))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "Versión actual: v$appVersionName",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -492,59 +760,6 @@ fun SettingsScreen(
                         color = StatusSuccess,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Device Information Card
-        val deviceContext = LocalContext.current
-        val deviceId = remember { com.poltivi.data.network.DeviceManager.getDeviceId(deviceContext) }
-
-        SettingsCard(
-            title = "INFORMACIÓN DEL DISPOSITIVO E ID DE INSTALACIÓN",
-            icon = Icons.Rounded.Memory
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "ID Único de Instalación", fontSize = 12.sp, color = TextMuted)
-                    Text(
-                        text = deviceId,
-                        fontSize = 11.sp,
-                        color = OrangeGlow,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Modelo del Dispositivo", fontSize = 12.sp, color = TextMuted)
-                    Text(
-                        text = "${android.os.Build.MANUFACTURER.uppercase()} ${android.os.Build.MODEL}",
-                        fontSize = 12.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Servidor Web de Gestión", fontSize = 12.sp, color = TextMuted)
-                    Text(
-                        text = "84.235.239.152",
-                        fontSize = 12.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -623,6 +838,7 @@ fun SettingsCard(
     title: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
+    iconTint: Color = OrangePrimary,
     content: @Composable () -> Unit
 ) {
     Card(
@@ -638,7 +854,7 @@ fun SettingsCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
-                    tint = OrangePrimary,
+                    tint = iconTint,
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
@@ -660,10 +876,13 @@ fun SettingsCard(
 fun CategoryManagementDialog(
     categories: List<com.poltivi.model.Category>,
     hiddenCategoryIds: Set<String>,
+    isPremium: Boolean,
     onToggleHidden: (String) -> Unit,
     onReorder: (List<com.poltivi.model.Category>) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(
@@ -705,14 +924,51 @@ fun CategoryManagementDialog(
                     color = TextMuted
                 )
 
+                if (!isPremium) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        color = Color(0xFF2B1A0E),
+                        shape = RoundedCornerShape(10.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = "⭐", fontSize = 15.sp)
+                            Text(
+                                text = "La opción de ordenar las categorías solo está disponible para usuarios Premium.",
+                                color = OrangeGlow,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 LazyColumn(
                     modifier = Modifier.heightIn(max = 420.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    itemsIndexed(categories, key = { _, cat -> cat.id }) { index, cat ->
+                    itemsIndexed(categories, key = { index, cat -> "${cat.id}_$index" }) { index, cat ->
                         val isHidden = hiddenCategoryIds.contains(cat.id)
+
+                        fun handleReorderAction(action: () -> Unit) {
+                            if (!isPremium) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "La ordenación de categorías solo está disponible en la versión Premium",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                action()
+                            }
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -735,27 +991,362 @@ fun CategoryManagementDialog(
 
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(1.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                // Move to Top Button (⏫)
+                                // 1. Move to Top (⏫)
                                 FocusableCard(
                                     onClick = {
-                                        if (index > 0) {
-                                            val mutable = categories.toMutableList()
-                                            val item = mutable.removeAt(index)
-                                            mutable.add(0, item)
-                                            onReorder(mutable)
+                                        handleReorderAction {
+                                            if (index > 0) {
+                                                val mutable = categories.toMutableList()
+                                                val item = mutable.removeAt(index)
+                                                mutable.add(0, item)
+                                                onReorder(mutable)
+                                            }
                                         }
                                     },
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(26.dp),
-                                    colors = CardDefaults.cardColors(containerColor = if (index > 0) Color(0xFF1E2235) else Color(0xFF121420))
+                                    modifier = Modifier.size(28.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("⏫", fontSize = 11.sp, color = if (index > 0) OrangePrimary else TextMuted)
+                                        Text("⏫", fontSize = 11.sp)
+                                    }
+                                }
+
+                                // 2. Move Up (↑)
+                                FocusableCard(
+                                    onClick = {
+                                        handleReorderAction {
+                                            if (index > 0) {
+                                                val mutable = categories.toMutableList()
+                                                val item = mutable.removeAt(index)
+                                                mutable.add(index - 1, item)
+                                                onReorder(mutable)
+                                            }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.size(28.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("↑", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // 3. Move Down (↓)
+                                FocusableCard(
+                                    onClick = {
+                                        handleReorderAction {
+                                            if (index < categories.size - 1) {
+                                                val mutable = categories.toMutableList()
+                                                val item = mutable.removeAt(index)
+                                                mutable.add(index + 1, item)
+                                                onReorder(mutable)
+                                            }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.size(28.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("↓", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // 4. Move to Bottom (⏬)
+                                FocusableCard(
+                                    onClick = {
+                                        handleReorderAction {
+                                            if (index < categories.size - 1) {
+                                                val mutable = categories.toMutableList()
+                                                val item = mutable.removeAt(index)
+                                                mutable.add(item)
+                                                onReorder(mutable)
+                                            }
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.size(28.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                ) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("⏬", fontSize = 11.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(6.dp))
+
+                                // 5. Visibility Toggle Button (👁️ Visible / 👁️ Oculta)
+                                val visBgColor = if (!isHidden) Color(0xFF0C2B1D) else Color(0xFF2B0C15)
+                                val visBorderColor = if (!isHidden) Color(0xFF00E676) else Color(0xFFFF3366)
+                                val visText = if (!isHidden) "👁 Visible" else "👁 Oculta"
+
+                                FocusableCard(
+                                    onClick = { onToggleHidden(cat.id) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.height(30.dp),
+                                    colors = CardDefaults.cardColors(containerColor = visBgColor)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .border(1.dp, visBorderColor, RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = visText,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = visBorderColor
+                                        )
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddPlaylistDialog(
+    initialPlaylist: com.poltivi.model.SavedPlaylist? = null,
+    onSave: (com.poltivi.model.SavedPlaylist) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf(initialPlaylist?.name ?: "") }
+    var selectedTab by remember { mutableStateOf(if (initialPlaylist?.mode == DataSourceMode.M3U) com.poltivi.ui.viewmodel.LoginTab.M3U else com.poltivi.ui.viewmodel.LoginTab.XTREAM) }
+    var serverUrl by remember { mutableStateOf(initialPlaylist?.serverUrl ?: "") }
+    var username by remember { mutableStateOf(initialPlaylist?.username ?: "") }
+    var password by remember { mutableStateOf(initialPlaylist?.password ?: "") }
+    var m3uUrl by remember { mutableStateOf(initialPlaylist?.m3uUrl ?: "") }
+
+    val context = LocalContext.current
+    val deviceId = remember { com.poltivi.data.network.DeviceManager.getDeviceId(context) }
+    val qrUrl = remember(deviceId) { "http://84.235.239.152/poltivi/config.php?id=$deviceId" }
+    val qrCodeApiUrl = remember(qrUrl) { com.poltivi.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
+
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == com.poltivi.ui.viewmodel.LoginTab.QR) {
+            while (isActive) {
+                kotlinx.coroutines.delay(2000)
+                try {
+                    val creds = com.poltivi.data.network.DeviceManager.pollQrLoginCredentials(context)
+                    if (creds != null) {
+                        if (creds.usuario.isNotBlank() && creds.password.isNotBlank()) {
+                            val sUrl = if (creds.url.isNotBlank()) creds.url else "http://84.235.239.152"
+                            val plName = name.ifBlank { "Xtream Playlist" }
+                            val newPl = com.poltivi.model.SavedPlaylist(
+                                id = java.util.UUID.randomUUID().toString(),
+                                name = plName,
+                                mode = DataSourceMode.XTREAM,
+                                serverUrl = sUrl,
+                                username = creds.usuario,
+                                password = creds.password,
+                                m3uUrl = "",
+                                isActive = false
+                            )
+                            onSave(newPl)
+                            break
+                        } else if (creds.url.isNotBlank()) {
+                            val plName = name.ifBlank { "M3U Playlist" }
+                            val newPl = com.poltivi.model.SavedPlaylist(
+                                id = java.util.UUID.randomUUID().toString(),
+                                name = plName,
+                                mode = DataSourceMode.M3U,
+                                serverUrl = "",
+                                username = "",
+                                password = "",
+                                m3uUrl = creds.url,
+                                isActive = false
+                            )
+                            onSave(newPl)
+                            break
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.9f).clip(RoundedCornerShape(16.dp)),
+            color = SurfaceDark
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("AÑADIR NUEVA PLAYLIST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre de la lista (ej: Servidor 2)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FocusableCard(
+                        onClick = { selectedTab = com.poltivi.ui.viewmodel.LoginTab.XTREAM },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.poltivi.ui.viewmodel.LoginTab.XTREAM) OrangePrimary else Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Xtream Codes", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                    FocusableCard(
+                        onClick = { selectedTab = com.poltivi.ui.viewmodel.LoginTab.M3U },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.poltivi.ui.viewmodel.LoginTab.M3U) OrangePrimary else Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Enlace M3U", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                    FocusableCard(
+                        onClick = { selectedTab = com.poltivi.ui.viewmodel.LoginTab.QR },
+                        modifier = Modifier.weight(1f).height(36.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.poltivi.ui.viewmodel.LoginTab.QR) OrangePrimary else Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("Iniciar con QR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                    }
+                }
+
+                when (selectedTab) {
+                    com.poltivi.ui.viewmodel.LoginTab.XTREAM -> {
+                        OutlinedTextField(
+                            value = serverUrl,
+                            onValueChange = { serverUrl = it },
+                            label = { Text("URL del Servidor (http://...)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                        )
+                        OutlinedTextField(
+                            value = username,
+                            onValueChange = { username = it },
+                            label = { Text("Usuario") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                        )
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Contraseña") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                        )
+
+                        FocusableCard(
+                            onClick = {
+                                val plName = name.ifBlank { "Xtream Playlist" }
+                                val newPl = com.poltivi.model.SavedPlaylist(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    name = plName,
+                                    mode = DataSourceMode.XTREAM,
+                                    serverUrl = serverUrl,
+                                    username = username,
+                                    password = password,
+                                    m3uUrl = m3uUrl,
+                                    isActive = false
+                                )
+                                onSave(newPl)
+                            },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
+                    com.poltivi.ui.viewmodel.LoginTab.M3U -> {
+                        OutlinedTextField(
+                            value = m3uUrl,
+                            onValueChange = { m3uUrl = it },
+                            label = { Text("URL de la lista M3U") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                        )
+
+                        FocusableCard(
+                            onClick = {
+                                val plName = name.ifBlank { "M3U Playlist" }
+                                val newPl = com.poltivi.model.SavedPlaylist(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    name = plName,
+                                    mode = DataSourceMode.M3U,
+                                    serverUrl = serverUrl,
+                                    username = username,
+                                    password = password,
+                                    m3uUrl = m3uUrl,
+                                    isActive = false
+                                )
+                                onSave(newPl)
+                            },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
+                    com.poltivi.ui.viewmodel.LoginTab.QR -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Añadir Playlist escaneando código QR",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(180.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White)
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = qrCodeApiUrl,
+                                    contentDescription = "Código QR de inicio de sesión",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            Text(
+                                text = "Escanea con el móvil e introduce los datos",
+                                color = OrangeGlow,
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }

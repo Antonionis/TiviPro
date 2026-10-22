@@ -18,7 +18,7 @@ data class SportsUiState(
 )
 
 class SportsViewModel(
-    private val repository: DataRepository
+    val repository: DataRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SportsUiState())
@@ -33,8 +33,15 @@ class SportsViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val events = repository.getSportsEvents()
+                val currentTab = _uiState.value.selectedDateTab
+                val availableTab = if (events.isNotEmpty() && events.none { it.dateTab.equals(currentTab, ignoreCase = true) }) {
+                    events.first().dateTab
+                } else {
+                    currentTab
+                }
                 val state = _uiState.value.copy(
                     allEvents = events,
+                    selectedDateTab = availableTab,
                     isLoading = false
                 )
                 _uiState.value = state.copy(filteredEvents = filterEvents(state))

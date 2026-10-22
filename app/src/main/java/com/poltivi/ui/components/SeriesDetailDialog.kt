@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +39,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
@@ -61,6 +67,17 @@ fun SeriesDetailDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val seasonsList = remember(series.seasons, episodes) {
+        val fromEpisodes = episodes.map { it.seasonNum }.distinct().sorted()
+        if (fromEpisodes.isNotEmpty()) {
+            fromEpisodes
+        } else if (series.seasons.isNotEmpty()) {
+            series.seasons.map { it.seasonNumber }
+        } else {
+            listOf(1)
+        }
+    }
+
     val filteredEpisodes = episodes.filter { it.seasonNum == selectedSeasonNum }
         .ifEmpty { episodes }
 
@@ -72,7 +89,22 @@ fun SeriesDetailDialog(
             modifier = modifier
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.90f)
-                .clip(RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(20.dp))
+                .onKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown) {
+                        val keyCode = event.nativeKeyEvent.keyCode
+                        val isLeft = event.key == Key.DirectionLeft || keyCode == 21
+                        val isRight = event.key == Key.DirectionRight || keyCode == 22
+                        val currentIndex = seasonsList.indexOf(selectedSeasonNum)
+                        if (isLeft && currentIndex > 0) {
+                            onSeasonSelect(seasonsList[currentIndex - 1])
+                            true
+                        } else if (isRight && currentIndex >= 0 && currentIndex < seasonsList.size - 1) {
+                            onSeasonSelect(seasonsList[currentIndex + 1])
+                            true
+                        } else false
+                    } else false
+                },
             color = SurfaceDark
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
@@ -151,7 +183,6 @@ fun SeriesDetailDialog(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
 
-                        val seasonsList = if (series.seasons.isNotEmpty()) series.seasons.map { it.seasonNumber } else listOf(1)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(seasonsList) { seasonNum ->
                                 val isSelected = seasonNum == selectedSeasonNum

@@ -12,7 +12,8 @@ import kotlinx.coroutines.launch
 
 enum class LoginTab {
     XTREAM,
-    M3U
+    M3U,
+    QR
 }
 
 data class AuthUiState(
@@ -29,7 +30,7 @@ data class AuthUiState(
 )
 
 class AuthViewModel(
-    private val repository: DataRepository
+    val repository: DataRepository
 ) : ViewModel() {
 
     val isLoggedIn: StateFlow<Boolean> = repository.isLoggedIn
@@ -136,12 +137,15 @@ class AuthViewModel(
                     onSuccess()
                 }.onFailure { err ->
                     val rawMsg = err.message ?: ""
-                    val displayMsg = if (rawMsg.contains("Empty response body", ignoreCase = true)) {
-                        "Fallo de conexion con el servidor"
-                    } else if (rawMsg.isNotBlank()) {
-                        rawMsg
-                    } else {
-                        "Fallo de conexion con el servidor"
+                    val displayMsg = when {
+                        rawMsg.contains("502", ignoreCase = true) || rawMsg.contains("Bad Gateway", ignoreCase = true) ->
+                            "Fallo de conexión con el servidor (HTTP 502 Bad Gateway). Compruebe la URL del servidor."
+                        rawMsg.contains("Empty response body", ignoreCase = true) ->
+                            "Fallo de conexión con el servidor"
+                        rawMsg.isNotBlank() ->
+                            rawMsg
+                        else ->
+                            "Fallo de conexión con el servidor"
                     }
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

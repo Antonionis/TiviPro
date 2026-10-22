@@ -157,11 +157,16 @@ class VodViewModel(
             try {
                 val enriched = com.poltivi.data.network.TmdbHelper.enrichSeries(series)
                 val episodes = repository.getSeriesEpisodes(series.id)
+                val seasonNums = episodes.map { it.seasonNum }.distinct().sorted()
+                val seasonInfos = seasonNums.map { num -> com.poltivi.model.SeasonInfo(seasonNumber = num) }
+                val updatedSeries = enriched.copy(seasons = if (seasonInfos.isNotEmpty()) seasonInfos else enriched.seasons)
+                val initialSeason = seasonNums.firstOrNull() ?: 1
+
                 _uiState.value = _uiState.value.copy(
-                    selectedSeries = enriched,
-                    selectedSeasonNum = 1,
+                    selectedSeries = updatedSeries,
+                    selectedSeasonNum = initialSeason,
                     seriesEpisodes = episodes,
-                    seriesList = _uiState.value.seriesList.map { if (it.id == enriched.id) enriched else it },
+                    seriesList = _uiState.value.seriesList.map { if (it.id == updatedSeries.id) updatedSeries else it },
                     isLoading = false
                 )
             } catch (_: Exception) {

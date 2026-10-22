@@ -32,8 +32,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.VideoLibrary
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -43,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +77,7 @@ fun SeriesScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val firstSeriesFocusRequester = remember { FocusRequester() }
+    val selectedCategoryFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(uiState.seriesList) {
         if (uiState.seriesList.isNotEmpty()) {
@@ -168,7 +168,8 @@ fun SeriesScreen(
                     val isAllSelected = uiState.selectedSeriesCategory == null && !uiState.isSeriesFavoritesSelected
                     FocusableCard(
                         onClick = { viewModel.selectSeriesCategory(null) },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isAllSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -195,7 +196,8 @@ fun SeriesScreen(
                     val isFavSelected = uiState.isSeriesFavoritesSelected
                     FocusableCard(
                         onClick = { viewModel.selectSeriesFavorites() },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isFavSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -222,7 +224,8 @@ fun SeriesScreen(
                     val isSelected = uiState.selectedSeriesCategory?.id == cat.id
                     FocusableCard(
                         onClick = { viewModel.selectSeriesCategory(cat) },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -257,7 +260,6 @@ fun SeriesScreen(
                     Text(text = "No se encontraron series de TV.", color = TextMuted, fontSize = 13.sp)
                 }
             } else {
-                // Adaptive Series Grid: minSize = 110.dp shows 3-4 series on mobile and 5-6 on TV
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 110.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
@@ -265,11 +267,17 @@ fun SeriesScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(uiState.seriesList, key = { _, s -> s.id }) { index, series ->
+                    itemsIndexed(uiState.seriesList, key = { index, s -> "${s.id}_$index" }) { index, series ->
                         SeriesCard(
                             series = series,
                             onClick = { viewModel.selectSeries(series) },
-                            modifier = if (index == 0) Modifier.focusRequester(firstSeriesFocusRequester) else Modifier
+                            modifier = Modifier
+                                .focusProperties {
+                                    if (index == 0) {
+                                        up = selectedCategoryFocusRequester
+                                    }
+                                }
+                                .then(if (index == 0) Modifier.focusRequester(firstSeriesFocusRequester) else Modifier)
                         )
                     }
                 }
@@ -378,14 +386,8 @@ fun SeriesCard(
                         color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "${series.seasons.size.coerceAtLeast(1)} Temporada(s)",
-                        color = OrangeGlow,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
                     )
                 }
             }

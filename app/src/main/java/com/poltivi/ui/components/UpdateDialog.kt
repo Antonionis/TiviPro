@@ -1,12 +1,16 @@
 ﻿package com.poltivi.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.SystemUpdate
@@ -43,19 +47,20 @@ import kotlinx.coroutines.launch
 @Composable
 fun UpdateDialog(
     updateInfo: UpdateInfo,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    isReleaseNotesOnly: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var isDownloading by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(0f) }
 
-    val actualizarFocusRequester = remember { FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(isDownloading) {
         if (!isDownloading) {
             try {
-                actualizarFocusRequester.requestFocus()
+                focusRequester.requestFocus()
             } catch (_: Exception) {}
         }
     }
@@ -76,7 +81,7 @@ fun UpdateDialog(
                     modifier = Modifier.size(26.dp)
                 )
                 Text(
-                    text = "¡Nueva Versión ${updateInfo.versionName}!",
+                    text = if (isReleaseNotesOnly) "Novedades Versión ${updateInfo.versionName}" else "¡Nueva Versión ${updateInfo.versionName}!",
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp
@@ -92,14 +97,22 @@ fun UpdateDialog(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = updateInfo.changelog,
-                    color = TextMuted,
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp
-                )
 
-                if (isDownloading) {
+                // Scrollable container for release notes content
+                Box(
+                    modifier = Modifier
+                        .heightIn(max = 260.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = updateInfo.changelog,
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+
+                if (isDownloading && !isReleaseNotesOnly) {
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
                         text = "Descargando actualización... (${(downloadProgress * 100).toInt()}%)",
@@ -118,7 +131,21 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            if (!isDownloading) {
+            if (isReleaseNotesOnly) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.focusRequester(focusRequester),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("CERRAR", fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                }
+            } else if (!isDownloading) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -138,7 +165,7 @@ fun UpdateDialog(
                                 onDismiss()
                             }
                         },
-                        modifier = Modifier.focusRequester(actualizarFocusRequester),
+                        modifier = Modifier.focusRequester(focusRequester),
                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary),
                         shape = RoundedCornerShape(10.dp)
                     ) {

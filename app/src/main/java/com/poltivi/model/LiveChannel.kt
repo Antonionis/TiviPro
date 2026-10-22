@@ -9,5 +9,7 @@ data class LiveChannel(
     val epgId: String? = null,
     val streamType: String? = "live",
     val channelNumber: Int? = null,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val tvArchive: Int = 0,
+    val tvArchiveDuration: Int = 0
 )

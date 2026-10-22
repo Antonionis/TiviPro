@@ -1,6 +1,8 @@
 ﻿package com.poltivi.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.text.style.TextAlign
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,13 +25,25 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,11 +54,22 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
+import com.poltivi.ui.components.FocusableCard
+import com.poltivi.ui.theme.OrangeGlow
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.isActive
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -74,6 +99,31 @@ fun LoginScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val loginContext = LocalContext.current
+
+    // Polling continuo desde TV/Móvil al arrancar la pantalla sin sesión activa
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            delay(2000)
+            try {
+                val creds = com.poltivi.data.network.DeviceManager.pollQrLoginCredentials(loginContext)
+                if (creds != null && creds.status == "success" && creds.url.isNotBlank()) {
+                    val formattedUrl = if (!creds.url.startsWith("http://") && !creds.url.startsWith("https://")) "http://${creds.url}" else creds.url
+                    if (creds.metodo == "xtream" && creds.usuario.isNotBlank()) {
+                        viewModel.onServerUrlChange(formattedUrl)
+                        viewModel.onUsernameChange(creds.usuario)
+                        viewModel.onPasswordChange(creds.password)
+                        viewModel.connectXtream(onLoginSuccess)
+                        break
+                    } else if (creds.metodo == "m3u") {
+                        viewModel.onM3uUrlChange(formattedUrl)
+                        viewModel.connectM3u(onLoginSuccess)
+                        break
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     Box(
         modifier = modifier
@@ -154,15 +204,38 @@ fun LoginScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
+                                var showSwitchPlaylistDialog by remember { mutableStateOf(false) }
+
+                                if (showSwitchPlaylistDialog) {
+                                    SwitchPlaylistDialog(
+                                        viewModel = viewModel,
+                                        onDismiss = { showSwitchPlaylistDialog = false }
+                                    )
+                                }
+
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Button(
                                         onClick = onLoginSuccess,
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier.weight(1.2f),
                                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                                     ) {
-                                        Text("ABRIR PANEL PRINCIPAL", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text("ABRIR PANEL PRINCIPAL", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+
+                                    Button(
+                                        onClick = { showSwitchPlaylistDialog = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ListAlt,
+                                            contentDescription = "Cambiar de lista",
+                                            tint = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("CAMBIAR DE LISTA", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
                                     }
 
                                     Button(
@@ -179,7 +252,11 @@ fun LoginScreen(
                             }
                         }
                     } else {
-                        // Option Selector Tabs (Xtream Codes vs Lista M3U)
+                        // Option Selector Tabs (Xtream Codes vs Lista M3U vs Iniciar con QR)
+                        val xtreamTabFocus = remember { FocusRequester() }
+                        val m3uTabFocus = remember { FocusRequester() }
+                        val qrTabFocus = remember { FocusRequester() }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -188,63 +265,118 @@ fun LoginScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             // Xtream Codes Tab
-                            Box(
+                            FocusableCard(
+                                onClick = { viewModel.onTabSelected(LoginTab.XTREAM) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(42.dp)
-                                    .background(
-                                        if (uiState.selectedTab == LoginTab.XTREAM) OrangePrimary else Color.Transparent,
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable { viewModel.onTabSelected(LoginTab.XTREAM) },
-                                contentAlignment = Alignment.Center
+                                    .focusRequester(xtreamTabFocus)
+                                    .focusProperties { right = m3uTabFocus }
+                                    .onFocusChanged { state ->
+                                        if (state.isFocused) viewModel.onTabSelected(LoginTab.XTREAM)
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                elevation = 0.dp,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (uiState.selectedTab == LoginTab.XTREAM) OrangePrimary else Color.Transparent
+                                )
                             ) {
                                 Row(
+                                    modifier = Modifier.fillMaxSize(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.Dns,
                                         contentDescription = null,
                                         tint = if (uiState.selectedTab == LoginTab.XTREAM) Color.White else TextMuted,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Xtream Codes",
+                                        text = "Xtream",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         color = if (uiState.selectedTab == LoginTab.XTREAM) Color.White else TextMuted
                                     )
                                 }
                             }
 
                             // M3U Tab
-                            Box(
+                            FocusableCard(
+                                onClick = { viewModel.onTabSelected(LoginTab.M3U) },
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(42.dp)
-                                    .background(
-                                        if (uiState.selectedTab == LoginTab.M3U) OrangePrimary else Color.Transparent,
-                                        RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable { viewModel.onTabSelected(LoginTab.M3U) },
-                                contentAlignment = Alignment.Center
+                                    .focusRequester(m3uTabFocus)
+                                    .focusProperties {
+                                        left = xtreamTabFocus
+                                        right = qrTabFocus
+                                    }
+                                    .onFocusChanged { state ->
+                                        if (state.isFocused) viewModel.onTabSelected(LoginTab.M3U)
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                elevation = 0.dp,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (uiState.selectedTab == LoginTab.M3U) OrangePrimary else Color.Transparent
+                                )
                             ) {
                                 Row(
+                                    modifier = Modifier.fillMaxSize(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Rounded.PlaylistPlay,
                                         contentDescription = null,
                                         tint = if (uiState.selectedTab == LoginTab.M3U) Color.White else TextMuted,
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "Lista M3U",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         color = if (uiState.selectedTab == LoginTab.M3U) Color.White else TextMuted
+                                    )
+                                }
+                            }
+
+                            // QR Tab
+                            FocusableCard(
+                                onClick = { viewModel.onTabSelected(LoginTab.QR) },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .focusRequester(qrTabFocus)
+                                    .focusProperties { left = m3uTabFocus }
+                                    .onFocusChanged { state ->
+                                        if (state.isFocused) viewModel.onTabSelected(LoginTab.QR)
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                elevation = 0.dp,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (uiState.selectedTab == LoginTab.QR) OrangePrimary else Color.Transparent
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.QrCodeScanner,
+                                        contentDescription = null,
+                                        tint = if (uiState.selectedTab == LoginTab.QR) Color.White else TextMuted,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Iniciar con QR",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        color = if (uiState.selectedTab == LoginTab.QR) Color.White else TextMuted
                                     )
                                 }
                             }
@@ -308,7 +440,24 @@ fun LoginScreen(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                        } else {
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Connect Button
+                            Button(
+                                onClick = { viewModel.connectXtream(onLoginSuccess) },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier.fillMaxWidth().height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Text("CONECTAR AL SERVIDOR", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                }
+                            }
+                        } else if (uiState.selectedTab == LoginTab.M3U) {
                             // M3U Form Title
                             Text(
                                 text = "Cargar Lista M3U",
@@ -332,37 +481,86 @@ fun LoginScreen(
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
                             )
-                        }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                        // Connect Button
-                        Button(
-                            onClick = {
-                                if (uiState.selectedTab == LoginTab.XTREAM) {
-                                    viewModel.connectXtream(onLoginSuccess)
+                            // Connect Button
+                            Button(
+                                onClick = { viewModel.connectM3u(onLoginSuccess) },
+                                enabled = !uiState.isLoading,
+                                modifier = Modifier.fillMaxWidth().height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                            ) {
+                                if (uiState.isLoading) {
+                                    CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
                                 } else {
-                                    viewModel.connectM3u(onLoginSuccess)
+                                    Text("CARGAR LISTA M3U", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
-                            },
-                            enabled = !uiState.isLoading,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(46.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
-                        ) {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
+                            }
+                        } else {
+                            // QR TAB CONTENT
+                            val context = LocalContext.current
+                            val deviceId = remember { com.poltivi.data.network.DeviceManager.getDeviceId(context) }
+                            val qrUrl = remember(deviceId) { "http://84.235.239.152/poltivi/config.php?id=$deviceId" }
+                            val qrCodeApiUrl = remember(qrUrl) { com.poltivi.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
+
+                            LaunchedEffect(uiState.selectedTab) {
+                                while (isActive) {
+                                    delay(2000)
+                                    try {
+                                        val creds = com.poltivi.data.network.DeviceManager.pollQrLoginCredentials(context)
+                                        if (creds != null) {
+                                            if (creds.usuario.isNotBlank() && creds.password.isNotBlank()) {
+                                                val serverUrl = if (creds.url.isNotBlank()) creds.url else "http://84.235.239.152"
+                                                viewModel.onServerUrlChange(serverUrl)
+                                                viewModel.onUsernameChange(creds.usuario)
+                                                viewModel.onPasswordChange(creds.password)
+                                                viewModel.connectXtream(onLoginSuccess)
+                                                break
+                                            } else if (creds.url.isNotBlank()) {
+                                                viewModel.onM3uUrlChange(creds.url)
+                                                viewModel.connectM3u(onLoginSuccess)
+                                                break
+                                            }
+                                        }
+                                    } catch (_: Exception) {}
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Text(
-                                    text = if (uiState.selectedTab == LoginTab.XTREAM) "CONECTAR AL SERVIDOR" else "CARGAR LISTA M3U",
+                                    text = "Iniciar Sesión con Código QR",
+                                    fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp
+                                    color = Color.White
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(210.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White)
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = qrCodeApiUrl,
+                                        contentDescription = "Código QR de inicio de sesión",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+
+                                Text(
+                                    text = "Escanea con el móvil e introduce los datos",
+                                    color = OrangeGlow,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -435,5 +633,95 @@ private fun formatLoginExpDate(expDate: String?): String {
     } catch (_: Exception) {
         val oneYearAhead = Date(System.currentTimeMillis() + 365L * 24 * 3600 * 1000)
         SimpleDateFormat("d 'de' MMMM, yyyy", Locale.forLanguageTag("es-ES")).format(oneYearAhead)
+    }
+}
+
+@Composable
+fun SwitchPlaylistDialog(
+    viewModel: AuthViewModel,
+    onDismiss: () -> Unit
+) {
+    val repository = viewModel.repository
+    var savedPlaylists by remember { mutableStateOf(repository.getSavedPlaylists()) }
+    var statusMsg by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.92f).clip(RoundedCornerShape(16.dp)),
+            color = SurfaceDark
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("SELECCIONAR O CAMBIAR PLAYLIST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White)
+                    }
+                }
+
+                Text("Tus listas y servidores guardados:", fontSize = 12.sp, color = TextMuted)
+
+                savedPlaylists.forEach { pl ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SurfaceDarkCard, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(text = pl.name, fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                if (pl.isActive) {
+                                    Surface(color = Color(0xFF00C853), shape = RoundedCornerShape(4.dp)) {
+                                        Text("ACTIVA", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                            }
+                            Text(
+                                text = if (pl.mode == DataSourceMode.XTREAM) "Xtream: ${pl.serverUrl}" else "M3U: ${pl.m3uUrl}",
+                                fontSize = 10.sp,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        if (!pl.isActive) {
+                            FocusableCard(
+                                onClick = {
+                                    scope.launch {
+                                        statusMsg = "Conectando a ${pl.name}..."
+                                        val ok = repository.switchPlaylist(pl.id)
+                                        if (ok) {
+                                            statusMsg = "Conectado a ${pl.name}"
+                                            onDismiss()
+                                        } else {
+                                            statusMsg = "Error al conectar"
+                                            savedPlaylists = repository.getSavedPlaylists()
+                                        }
+                                    }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                            ) {
+                                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)) {
+                                    Text("CONECTAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                statusMsg?.let { msg ->
+                    Text(text = msg, color = OrangeGlow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
     }
 }

@@ -21,6 +21,7 @@ import com.poltivi.data.network.UpdateInfo
 import com.poltivi.data.network.UpdateManager
 import com.poltivi.ui.components.UpdateDialog
 import com.poltivi.data.repository.DataRepositoryImpl
+import com.poltivi.ui.screens.CatchupScreen
 import com.poltivi.ui.screens.DashboardScreen
 import com.poltivi.ui.screens.LiveTvScreen
 import com.poltivi.ui.screens.LoginScreen
@@ -185,6 +186,21 @@ fun PolTiviApp(
                             onLogoutClick = {
                                 authViewModel.logout()
                                 mainViewModel.navigateTo(AppScreen.LOGIN)
+                            },
+                            onBackClick = { mainViewModel.navigateTo(AppScreen.DASHBOARD) }
+                        )
+                    }
+                    AppScreen.CATCHUP -> {
+                        CatchupScreen(
+                            viewModel = mainViewModel,
+                            onProgramPlay = { channel, program, url ->
+                                mainViewModel.playStream(
+                                    title = "🔴 ${program.title}",
+                                    streamUrl = url,
+                                    subTitle = "${channel.name} • Emisión en diferido",
+                                    isLive = false,
+                                    logoUrl = channel.iconUrl
+                                )
                             },
                             onBackClick = { mainViewModel.navigateTo(AppScreen.DASHBOARD) }
                         )

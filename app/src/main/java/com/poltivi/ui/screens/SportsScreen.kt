@@ -1,5 +1,6 @@
 ﻿package com.poltivi.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +26,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Tv
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -44,12 +40,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.poltivi.data.network.DeviceManager
 import com.poltivi.model.SportsEvent
 import com.poltivi.ui.components.FocusableCard
 import com.poltivi.ui.components.PolTiviLogo
@@ -57,7 +61,6 @@ import com.poltivi.ui.theme.DarkBackground
 import com.poltivi.ui.theme.OrangeGlow
 import com.poltivi.ui.theme.OrangePrimary
 import com.poltivi.ui.theme.StatusSuccess
-import com.poltivi.ui.theme.SurfaceDark
 import com.poltivi.ui.theme.SurfaceDarkCard
 import com.poltivi.ui.theme.TextMuted
 import com.poltivi.ui.viewmodel.SportsViewModel
@@ -70,8 +73,11 @@ fun SportsScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        val status = DeviceManager.verificarDispositivo(context)
+        viewModel.repository.setPremiumStatus(status.isPremium)
         viewModel.loadSportsEvents()
     }
 
@@ -85,10 +91,16 @@ fun SportsScreen(
                     val isLeft = event.key == Key.DirectionLeft || keyCode == 21
                     val isRight = event.key == Key.DirectionRight || keyCode == 22
                     if (isLeft) {
-                        viewModel.selectDateTab("Hoy")
+                        when (uiState.selectedDateTab) {
+                            "Mañana" -> viewModel.selectDateTab("Hoy")
+                            "Pasado Mañana" -> viewModel.selectDateTab("Mañana")
+                        }
                         true
                     } else if (isRight) {
-                        viewModel.selectDateTab("Mañana")
+                        when (uiState.selectedDateTab) {
+                            "Hoy" -> viewModel.selectDateTab("Mañana")
+                            "Mañana" -> viewModel.selectDateTab("Pasado Mañana")
+                        }
                         true
                     } else false
                 } else false
@@ -121,7 +133,7 @@ fun SportsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                            contentDescription = "Volver al Dashboard",
+                            contentDescription = "Volver",
                             tint = Color.White
                         )
                     }
@@ -158,18 +170,32 @@ fun SportsScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            val todayDateStr = remember { getFormattedDate(0) }
-            val tomorrowDateStr = remember { getFormattedDate(1) }
+            val firstDateStr = remember(uiState.allEvents) {
+                uiState.allEvents.firstOrNull { it.dateTab == "Hoy" }?.id?.split("_")?.getOrNull(1)
+            }
+            val secondDateStr = remember(uiState.allEvents) {
+                uiState.allEvents.firstOrNull { it.dateTab == "Mañana" }?.id?.split("_")?.getOrNull(1)
+            }
+            val thirdDateStr = remember(uiState.allEvents) {
+                uiState.allEvents.firstOrNull { it.dateTab == "Pasado Mañana" }?.id?.split("_")?.getOrNull(1)
+            }
 
-            val dateTabs = listOf(
-                "Hoy" to "HOY ($todayDateStr)",
-                "Mañana" to "MAÑANA ($tomorrowDateStr)"
-            )
+            val todayDateTitle = remember(firstDateStr) { getTabFormattedTitleForDate(firstDateStr, 0) }
+            val tomorrowDateTitle = remember(secondDateStr) { getTabFormattedTitleForDate(secondDateStr, 1) }
+            val pasadoDateTitle = remember(thirdDateStr) { getTabFormattedTitleForDate(thirdDateStr, 2) }
 
-            // DATE TABS: HOY & MAÑANA
+            val dateTabs = remember(todayDateTitle, tomorrowDateTitle, pasadoDateTitle) {
+                listOf(
+                    "Hoy" to todayDateTitle,
+                    "Mañana" to tomorrowDateTitle,
+                    "Pasado Mañana" to pasadoDateTitle
+                )
+            }
+
+            // DATE TABS: HOY FECHA, DÍA_SEMANA FECHA 1, DÍA_SEMANA FECHA 2
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 dateTabs.forEach { (tabKey, tabLabel) ->
                     val isSelected = uiState.selectedDateTab.equals(tabKey, ignoreCase = true)
@@ -190,7 +216,9 @@ fun SportsScreen(
                                 text = tabLabel,
                                 color = if (isSelected) Color.White else TextMuted,
                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
-                                fontSize = 13.sp
+                                fontSize = if (isCompactWidth) 11.sp else 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -199,7 +227,7 @@ fun SportsScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // EVENTS LIST (Continuous Vertical Scroll)
+            // EVENTS LIST (With Auto-Scroll to Live Event)
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier
@@ -210,6 +238,11 @@ fun SportsScreen(
                     CircularProgressIndicator(color = OrangePrimary)
                 }
             } else if (uiState.filteredEvents.isEmpty()) {
+                val currentTabFormattedTitle = when (uiState.selectedDateTab) {
+                    "Hoy" -> todayDateTitle
+                    "Mañana" -> tomorrowDateTitle
+                    else -> pasadoDateTitle
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -223,24 +256,47 @@ fun SportsScreen(
                             tint = TextMuted,
                             modifier = Modifier.size(42.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No hay eventos deportivos disponibles para '${uiState.selectedDateTab}'",
+                            text = "No hay eventos deportivos para $currentTabFormattedTitle",
                             color = TextMuted,
-                            fontSize = 13.sp
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             } else {
+                val listState = rememberLazyListState()
+                val liveFocusRequester = remember { FocusRequester() }
+
+                // Find index of first live event or closest upcoming event for "Hoy"
+                val liveIndex = remember(uiState.selectedDateTab, uiState.filteredEvents) {
+                    val liveIdx = uiState.filteredEvents.indexOfFirst { it.isLive }
+                    if (liveIdx >= 0) liveIdx else 0
+                }
+
+                LaunchedEffect(uiState.selectedDateTab, uiState.filteredEvents) {
+                    if (liveIndex >= 0 && uiState.filteredEvents.isNotEmpty()) {
+                        try {
+                            listState.animateScrollToItem(liveIndex)
+                            liveFocusRequester.requestFocus()
+                        } catch (_: Exception) {}
+                    }
+                }
+
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(uiState.filteredEvents, key = { it.id }) { event ->
-                        SportsEventCard(event = event)
+                    itemsIndexed(uiState.filteredEvents, key = { index, e -> "${e.id}_$index" }) { index, event ->
+                        SportsEventCard(
+                            event = event,
+                            modifier = if (index == liveIndex) Modifier.focusRequester(liveFocusRequester) else Modifier
+                        )
                     }
                 }
             }
@@ -253,48 +309,84 @@ fun SportsEventCard(
     event: SportsEvent,
     modifier: Modifier = Modifier
 ) {
+    val greenHighlight = Color(0xFF00E676)
+    val darkGreenBg = Color(0xFF0B2519)
+
     FocusableCard(
         onClick = {},
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+        colors = CardDefaults.cardColors(
+            containerColor = if (event.isLive) darkGreenBg else SurfaceDarkCard
+        ),
+        focusedBorderColor = if (event.isLive) greenHighlight else null,
+        unfocusedBorder = if (event.isLive) BorderStroke(2.dp, greenHighlight) else null
     ) {
         Column(
-            modifier = Modifier.padding(14.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            // Top Row: Sport Badge + Competition Badge
+            // Top Row: Sport Category + Live Badge (Left) | Competition Badge (Right)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sport Category Badge
-                Surface(
-                    color = OrangePrimary.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(6.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
+                // Left Badges: Sport + Live Status
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    Text(
-                        text = event.sportCategory,
-                        color = OrangeGlow,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                    // Sport Category Badge
+                    Surface(
+                        color = OrangePrimary.copy(alpha = 0.2f),
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, OrangePrimary.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = event.sportCategory,
+                            color = OrangeGlow,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (event.isLive) {
+                        Surface(
+                            color = Color(0xFF00C853),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "🟢 EN DIRECTO",
+                                color = Color.White,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
 
-                // Competition Badge
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Competition Badge (Right)
                 Surface(
                     color = Color(0xFF2A1B4E),
                     shape = RoundedCornerShape(6.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF673AB7))
+                    border = BorderStroke(1.dp, Color(0xFF673AB7))
                 ) {
                     Text(
                         text = event.competition,
                         color = Color(0xFFD1C4E9),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -317,7 +409,7 @@ fun SportsEventCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1B1B28), RoundedCornerShape(8.dp))
+                    .background(Color(0xFF131922), RoundedCornerShape(8.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -329,12 +421,12 @@ fun SportsEventCard(
                     Icon(
                         imageVector = Icons.Rounded.Schedule,
                         contentDescription = null,
-                        tint = StatusSuccess,
+                        tint = if (event.isLive) greenHighlight else StatusSuccess,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
                         text = event.dateTimeDisplay,
-                        color = StatusSuccess,
+                        color = if (event.isLive) greenHighlight else StatusSuccess,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -354,7 +446,9 @@ fun SportsEventCard(
                         text = event.channelName,
                         color = Color.White,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -362,10 +456,33 @@ fun SportsEventCard(
     }
 }
 
-private fun getFormattedDate(dayOffset: Int): String {
-    val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Madrid")).apply {
-        add(java.util.Calendar.DAY_OF_YEAR, dayOffset)
+private fun getTabFormattedTitleForDate(dateStr: String?, fallbackOffset: Int): String {
+    val localeEs = java.util.Locale("es", "ES")
+    val tz = java.util.TimeZone.getTimeZone("Europe/Madrid")
+    val cal = java.util.Calendar.getInstance(tz)
+
+    if (!dateStr.isNullOrBlank()) {
+        try {
+            val sdfIn = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { timeZone = tz }
+            val parsed = sdfIn.parse(dateStr)
+            if (parsed != null) {
+                cal.time = parsed
+            } else {
+                cal.add(java.util.Calendar.DAY_OF_YEAR, fallbackOffset)
+            }
+        } catch (_: Exception) {
+            cal.add(java.util.Calendar.DAY_OF_YEAR, fallbackOffset)
+        }
+    } else {
+        cal.add(java.util.Calendar.DAY_OF_YEAR, fallbackOffset)
     }
-    val sdf = java.text.SimpleDateFormat("d 'de' MMMM", java.util.Locale("es", "ES"))
-    return sdf.format(cal.time)
+
+    return if (fallbackOffset == 0) {
+        val sdf = java.text.SimpleDateFormat("d 'de' MMMM", localeEs)
+        "HOY " + sdf.format(cal.time)
+    } else {
+        val sdf = java.text.SimpleDateFormat("EEEE d 'de' MMMM", localeEs)
+        val raw = sdf.format(cal.time)
+        raw.replaceFirstChar { if (it.isLowerCase()) it.titlecase(localeEs) else it.toString() }
+    }
 }

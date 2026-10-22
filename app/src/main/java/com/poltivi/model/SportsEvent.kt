@@ -6,9 +6,12 @@ data class SportsEvent(
     val competition: String,
     val sportCategory: String,
     val dateTab: String,
+    val eventDateStr: String = "",
     val dateTimeDisplay: String,
     val channelName: String,
     val channelId: String? = null,
-    val streamUrl: String = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-    val iconUrl: String? = null
+    val streamUrl: String = "",
+    val iconUrl: String? = null,
+    val isLive: Boolean = false,
+    val startTimestamp: Long = 0L
 )

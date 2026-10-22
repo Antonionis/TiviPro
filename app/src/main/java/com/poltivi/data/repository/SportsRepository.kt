@@ -3,7 +3,6 @@
 import com.poltivi.data.network.NetworkModule
 import com.poltivi.data.parser.XmlTvParseResult
 import com.poltivi.data.parser.XmlTvParser
-import com.poltivi.data.parser.XmlTvProgram
 import com.poltivi.model.LiveChannel
 import com.poltivi.model.SportsEvent
 import kotlinx.coroutines.Dispatchers
@@ -65,236 +64,214 @@ class SportsRepositoryImpl : SportsRepository {
         }
     }
 
-    private fun getSpanishDayAndMonth(dayOffset: Int): Pair<Int, String> {
-        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Madrid")).apply {
-            add(java.util.Calendar.DAY_OF_YEAR, dayOffset)
+    private fun normalizeDateString(rawDate: String, currentYear: Int): String? {
+        val clean = rawDate.replace("*", "").trim()
+        if (clean.isBlank()) return null
+        val ymd = Regex("""^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$""").find(clean)
+        if (ymd != null) {
+            val (y, m, d) = ymd.destructured
+            return String.format(Locale.US, "%04d-%02d-%02d", y.toInt(), m.toInt(), d.toInt())
         }
-        val dayNumber = cal.get(java.util.Calendar.DAY_OF_MONTH)
-        val monthName = java.text.SimpleDateFormat("MMMM", java.util.Locale("es", "ES")).format(cal.time).lowercase()
-        return Pair(dayNumber, monthName)
+        val dmy = Regex("""^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$""").find(clean)
+        if (dmy != null) {
+            val (d, m, y) = dmy.destructured
+            return String.format(Locale.US, "%04d-%02d-%02d", y.toInt(), m.toInt(), d.toInt())
+        }
+        val dm = Regex("""^(\d{1,2})[-/.](\d{1,2})$""").find(clean)
+        if (dm != null) {
+            val (d, m) = dm.destructured
+            return String.format(Locale.US, "%04d-%02d-%02d", currentYear, m.toInt(), d.toInt())
+        }
+        return null
     }
 
-    private suspend fun fetchMarcaTvGuide(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
+    private fun normalizeHourString(rawHour: String): String {
+        val clean = rawHour.replace("*", "").trim().replace(".", ":")
+        val match = Regex("""^(\d{1,2}):(\d{2})""").find(clean)
+        return if (match != null) {
+            val (h, m) = match.destructured
+            String.format(Locale.US, "%02d:%02d", h.toInt(), m.toInt())
+        } else {
+            clean
+        }
+    }
+
+    private suspend fun fetchSportsProgTxt(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
         val events = mutableListOf<SportsEvent>()
         try {
-            val client = okhttp3.OkHttpClient.Builder()
-                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                .followRedirects(true)
-                .build()
-
+            val client = NetworkModule.getOkHttpClient()
             val request = Request.Builder()
-                .url("https://www.marca.com/programacion-tv.html?t=${System.currentTimeMillis()}")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .url("http://84.235.239.152/prog/prog.txt")
+                .header("User-Agent", "PolTivi-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use
-                val html = response.body.string()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext emptyList()
 
-                // Split HTML by date section headers <span class="title-section-widget">
-                val sections = html.split(Regex("""<span[^>]*class="title-section-widget"[^>]*>""", RegexOption.IGNORE_CASE))
+            val content = response.body.string()
+            val lines = content.lines()
 
-                val (todayNum, todayMonth) = getSpanishDayAndMonth(0)
-                val (tomorrowNum, tomorrowMonth) = getSpanishDayAndMonth(1)
+            val tz = TimeZone.getTimeZone("Europe/Madrid")
+            val cal = java.util.Calendar.getInstance(tz)
+            val currentYear = cal.get(java.util.Calendar.YEAR)
+            val yyyySdf = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = tz }
+            val fullSdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).apply { timeZone = tz }
 
-                var idCounter = 1
-                sections.forEachIndexed { sectionIdx, sectionContent ->
-                    if (sectionIdx == 0) return@forEachIndexed
-
-                    val headerMatch = Regex("""(?s)^(.*?)</span>""", RegexOption.IGNORE_CASE).find(sectionContent)
-                    val rawHeader = headerMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), " ")?.lowercase() ?: ""
-
-                    val isTodayHeader = rawHeader.contains("$todayNum") && rawHeader.contains(todayMonth)
-                    val isTomorrowHeader = rawHeader.contains("$tomorrowNum") && rawHeader.contains(tomorrowMonth)
-
-                    val dateTab = when {
-                        isTodayHeader || (sectionIdx == 1 && !isTomorrowHeader) -> "Hoy"
-                        isTomorrowHeader || sectionIdx == 2 -> "Mañana"
-                        else -> "Próximos Días"
-                    }
-
-                    val eventRegex = Regex("""(?s)<li[^>]*class="[^"]*dailyevent[^"]*"[^>]*>(.*?)</li>""", RegexOption.IGNORE_CASE)
-                    val eventMatches = eventRegex.findAll(sectionContent)
-
-                    for (m in eventMatches) {
-                        val block = m.groupValues[1]
-
-                        val hourMatch = Regex("""<strong[^>]*class="dailyhour"[^>]*>(.*?)</strong>""", RegexOption.IGNORE_CASE).find(block)
-                        val hour = hourMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), "")?.trim() ?: "20:00"
-
-                        val dayMatchTag = Regex("""<span[^>]*class="dailyday"[^>]*>(.*?)</span>""", RegexOption.IGNORE_CASE).find(block)
-                        val sportDay = dayMatchTag?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), "")?.trim() ?: "Deportes"
-
-                        val compMatch = Regex("""<span[^>]*class="dailycompetition"[^>]*>(.*?)</span>""", RegexOption.IGNORE_CASE).find(block)
-                        val competition = compMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), "")?.trim() ?: "Evento Deportivo"
-
-                        val teamsMatch = Regex("""<h4[^>]*class="dailyteams"[^>]*>(.*?)</h4>""", RegexOption.IGNORE_CASE).find(block)
-                        val teams = teamsMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), "")?.replace("&amp;", "&")?.trim() ?: ""
-
-                        val channelMatch = Regex("""<span[^>]*class="dailychannel"[^>]*>(.*?)</span>""", RegexOption.IGNORE_CASE).find(block)
-                        val channel = channelMatch?.groupValues?.get(1)?.replace(Regex("<[^>]*>"), "")?.trim() ?: "TV"
-
-                        if (teams.isBlank()) continue
-
-                        val matchedChannel = liveChannels.firstOrNull { ch ->
-                            ch.name.lowercase().contains(channel.lowercase()) || channel.lowercase().contains(ch.name.lowercase())
-                        }
-
-                        events.add(
-                            SportsEvent(
-                                id = "marca_${sectionIdx}_$idCounter",
-                                title = teams,
-                                competition = competition,
-                                sportCategory = sportDay,
-                                dateTab = dateTab,
-                                dateTimeDisplay = "$hour • $channel",
-                                channelName = matchedChannel?.name ?: channel,
-                                channelId = matchedChannel?.id,
-                                streamUrl = matchedChannel?.streamUrl ?: "",
-                                iconUrl = matchedChannel?.iconUrl
-                            )
-                        )
-                        idCounter++
+            val fileDates = mutableListOf<String>()
+            for (line in lines) {
+                val dateMatch = Regex("""(?i)FECHA:\s*([0-9\-/.]+)""").find(line)
+                if (dateMatch != null) {
+                    val raw = dateMatch.groupValues[1]
+                    val norm = normalizeDateString(raw, currentYear)
+                    if (norm != null && !fileDates.contains(norm)) {
+                        fileDates.add(norm)
                     }
                 }
+            }
+
+            val todayFormatted = yyyySdf.format(cal.time)
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            val tomorrowFormatted = yyyySdf.format(cal.time)
+            cal.add(java.util.Calendar.DAY_OF_YEAR, 1)
+            val pasadoFormatted = yyyySdf.format(cal.time)
+
+            val todayDateStr = if (fileDates.contains(todayFormatted)) todayFormatted else fileDates.getOrNull(0) ?: todayFormatted
+            val tomorrowDateStr = if (fileDates.contains(tomorrowFormatted)) tomorrowFormatted else fileDates.getOrNull(1) ?: tomorrowFormatted
+            val pasadoDateStr = if (fileDates.contains(pasadoFormatted)) pasadoFormatted else fileDates.getOrNull(2) ?: pasadoFormatted
+
+            var currentDateStr: String? = null
+            val nowMs = System.currentTimeMillis()
+            var counter = 1
+
+            for (rawLine in lines) {
+                val cleanLine = rawLine.replace("*", "").trim()
+                if (cleanLine.isBlank() || cleanLine.startsWith("=") || cleanLine.contains(":---") || cleanLine.contains("|---|")) {
+                    continue
+                }
+
+                val dateMatch = Regex("""(?i)FECHA:\s*([0-9\-/.]+)""").find(cleanLine)
+                if (dateMatch != null) {
+                    val raw = dateMatch.groupValues[1]
+                    val norm = normalizeDateString(raw, currentYear)
+                    if (norm != null) {
+                        currentDateStr = norm
+                    }
+                    continue
+                }
+
+                val effDateStr = currentDateStr ?: todayDateStr
+                if (effDateStr.isBlank()) continue
+
+                val bracketMatch = Regex("""^\[(\d{1,2}:\d{2})]\s*(?:\[([^\]]+)])?\s*(.*?)(?:\s*\|\s*(.*))?$""").find(cleanLine)
+
+                var normHour = "00:00"
+                var sportCategory = "Deportes"
+                var fullTitle = ""
+                var channel = "TV"
+
+                if (bracketMatch != null) {
+                    normHour = bracketMatch.groupValues[1]
+                    val cat = bracketMatch.groupValues[2]
+                    if (cat.isNotBlank()) sportCategory = cat
+                    fullTitle = bracketMatch.groupValues[3].trim()
+                    channel = bracketMatch.groupValues[4].trim().ifBlank { "TV" }
+                } else {
+                    val rawParts = cleanLine.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+                    if (rawParts.size < 2) continue
+
+                    normHour = rawParts.firstNotNullOfOrNull { part ->
+                        if (part.matches(Regex("""^\d{1,2}[:.]\d{2}$"""))) normalizeHourString(part) else null
+                    } ?: "00:00"
+
+                    val remainingParts = rawParts.filter { part ->
+                        normalizeDateString(part, currentYear) == null &&
+                        !part.matches(Regex("""^\d{1,2}[:.]\d{2}$""")) &&
+                        !part.uppercase(Locale.ROOT).startsWith("FECHA")
+                    }
+
+                    when {
+                        remainingParts.size >= 3 -> {
+                            sportCategory = remainingParts[0]
+                            fullTitle = remainingParts[1]
+                            channel = remainingParts[2]
+                        }
+                        remainingParts.size == 2 -> {
+                            fullTitle = remainingParts[0]
+                            channel = remainingParts[1]
+                        }
+                        remainingParts.size == 1 -> {
+                            fullTitle = remainingParts[0]
+                        }
+                        else -> continue
+                    }
+                }
+
+                if (fullTitle.isBlank() || fullTitle.uppercase(Locale.ROOT).contains("EVENTO") || fullTitle.uppercase(Locale.ROOT).contains("DEPORTE")) {
+                    continue
+                }
+
+                val dateTab = when (effDateStr) {
+                    todayDateStr -> "Hoy"
+                    tomorrowDateStr -> "Mañana"
+                    pasadoDateStr -> "Pasado Mañana"
+                    else -> {
+                        if (effDateStr < todayDateStr) "Hoy" else "Pasado Mañana"
+                    }
+                }
+
+                var competition = "Evento Deportivo"
+                var eventTitle = fullTitle
+                if (fullTitle.contains(":")) {
+                    val compParts = fullTitle.split(":", limit = 2)
+                    competition = compParts[0].trim()
+                    eventTitle = compParts[1].trim()
+                }
+
+                var startMs = 0L
+                var isLive = false
+                try {
+                    val parsedDate = fullSdf.parse("$effDateStr $normHour")
+                    if (parsedDate != null) {
+                        startMs = parsedDate.time
+                        if (nowMs >= startMs && nowMs < (startMs + 2 * 3600 * 1000L)) {
+                            isLive = true
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                val matchedChannel = liveChannels.firstOrNull { ch ->
+                    val chName = ch.name.lowercase().replace(" ", "").replace("+", "").replace(".", "")
+                    val targetName = channel.lowercase().replace(" ", "").replace("+", "").replace(".", "")
+                    chName.contains(targetName) || targetName.contains(chName)
+                }
+
+                events.add(
+                    SportsEvent(
+                        id = "prog_${effDateStr}_$counter",
+                        title = eventTitle,
+                        competition = competition,
+                        sportCategory = sportCategory,
+                        dateTab = dateTab,
+                        eventDateStr = effDateStr,
+                        dateTimeDisplay = normHour,
+                        channelName = channel,
+                        channelId = matchedChannel?.id,
+                        streamUrl = matchedChannel?.streamUrl ?: "",
+                        iconUrl = matchedChannel?.iconUrl,
+                        isLive = isLive,
+                        startTimestamp = startMs
+                    )
+                )
+                counter++
             }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-
-        if (events.isNotEmpty()) {
-            events
-        } else {
-            getMarcaDefaultEvents()
-        }
-    }
-
-    private fun getMarcaDefaultEvents(): List<SportsEvent> {
-        return listOf(
-            // Hoy (Jueves 15)
-            SportsEvent("m1", "At. Mineiro - Montevideo City", "COPA SUDAMERICANA", "Fútbol", "Hoy", "00:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m2", "Fluminense - Palmeiras", "COPA LIBERTADORES", "Fútbol", "Hoy", "02:30 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m3", "Gea - Davidovich", "MASTERS SHANGHAI", "Tenis", "Hoy", "08:30 • Movistar Plus", "Movistar Plus"),
-            SportsEvent("m4", "Sesión Vespertina (Shanghai)", "CAMPEONATO DEL MUNDO EN PISTA", "Ciclismo", "Hoy", "11:00 • Teledeporte", "Teledeporte"),
-            SportsEvent("m5", "Zverev - De Miñaur", "MASTERS SHANGHAI", "Tenis", "Hoy", "12:00 • M+ Deportes 2", "M+ Deportes 2"),
-            SportsEvent("m6", "Sesión Vespertina (Astana)", "COPA DEL MUNDO", "Natación", "Hoy", "15:00 • Teledeporte", "Teledeporte"),
-            SportsEvent("m7", "Union Saint-Gilloise - Real Sociedad", "EUROPA LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones", "M+ Liga de Campeones"),
-            SportsEvent("m8", "Universitatea Craiova - Getafe", "CONFERENCE LEAGUE", "Fútbol", "Hoy", "18:45 • M+ Liga de Campeones 2", "M+ Liga de Campeones 2"),
-            SportsEvent("m9", "España - Chile", "CAMPEONATO DEL MUNDO MASCULINO", "H. Patines", "Hoy", "19:30 • Teledeporte", "Teledeporte"),
-            SportsEvent("m10", "Al Ahli - Al Nassr", "LIGA SAUDÍ", "Fútbol", "Hoy", "20:00 • M+ Vamos 2", "M+ Vamos 2"),
-            SportsEvent("m11", "Valencia Basket - Maccabi Tel Aviv", "EUROLIGA", "Baloncesto", "Hoy", "20:30 • M+ Baloncesto", "M+ Baloncesto"),
-            SportsEvent("m12", "Celta - Juventus", "EUROPA LEAGUE", "Fútbol", "Hoy", "21:00 • Movistar Plus", "Movistar Plus"),
-            SportsEvent("m13", "Real Madrid - ASVEL", "EUROLIGA", "Baloncesto", "Hoy", "21:00 • M+ Vamos", "M+ Vamos"),
-
-            // Mañana (Viernes 16)
-            SportsEvent("m14", "Denver Broncos - Seahawks", "NFL JORNADA 6", "Rugby", "Mañana", "02:15 • DAZN 2", "DAZN 2"),
-            SportsEvent("m15", "Estudiantes de la Plata - Flamengo", "COPA LIBERTADORES", "Fútbol", "Mañana", "02:30 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m16", "Milan (Cuartos de Final)", "PREMIER PADEL", "Padel", "Mañana", "09:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m17", "Henan FC - Tianjin Jinmen Tiger", "SUPERLIGA CHINA", "Fútbol", "Mañana", "13:35 • Replay", "Replay"),
-            SportsEvent("m18", "Al Riyadh - Al Hilal", "LIGA SAUDÍ", "Fútbol", "Mañana", "17:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m19", "Cartagena - Europa", "1ª RFEF", "Fútbol", "Mañana", "19:00 • Movistar Primera Federación", "Movistar Primera Federación"),
-            SportsEvent("m20", "Ademar León - Villa de Aranda", "LIGA ASOBAL", "Balonmano", "Mañana", "19:00 • Eurosport 2", "Eurosport 2"),
-            SportsEvent("m21", "Al Ittihad - Al Shabab", "LIGA SAUDÍ", "Fútbol", "Mañana", "20:00 • M+ Vamos", "M+ Vamos"),
-            SportsEvent("m22", "CD Leganés - Córdoba CF", "LALIGA HYPERMOTION", "Fútbol", "Mañana", "20:30 • LALIGA TV HYPERMOTION", "LALIGA TV HYPERMOTION"),
-            SportsEvent("m23", "FC Barcelona - Olympiacos", "EUROLIGA", "Baloncesto", "Mañana", "20:30 • Movistar Plus", "Movistar Plus"),
-            SportsEvent("m24", "Virtus - Baskonia", "EUROLIGA", "Baloncesto", "Mañana", "20:30 • M+ Baloncesto 2", "M+ Baloncesto 2"),
-            SportsEvent("m25", "RC Deportivo - Levante UD", "LALIGA EA SPORTS", "Fútbol", "Mañana", "21:00 • M+ LALIGA", "M+ LALIGA"),
-            SportsEvent("m26", "Alcorcón - Huesca", "1ª RFEF", "Fútbol", "Mañana", "21:15 • Movistar Primera Federación", "Movistar Primera Federación")
-        )
+        return@withContext events
     }
 
     override suspend fun getSportsEvents(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
-        fetchMarcaTvGuide(liveChannels)
-    }
-
-    private fun isSportsProgram(prog: XmlTvProgram, channelName: String): Boolean {
-        val cat = prog.category?.lowercase() ?: ""
-        val title = prog.title.lowercase()
-        val desc = prog.description?.lowercase() ?: ""
-        val ch = channelName.lowercase()
-        val chId = prog.channelId.lowercase()
-
-        val sportsKeywords = listOf(
-            "deport", "fútbol", "futbol", "baloncesto", "basket", "motor", "f1", "fórmula", "formula",
-            "tenis", "golf", "ciclismo", "boxeo", "rugby", "padel", "champions", "laliga", "liga",
-            "nba", "ufc", "atp", "wta", "motogp", "dazn", "eurosport", "teledeporte", "tdp", "m. deportes",
-            "m. laliga", "m. liga de campeones", "m. vamos", "gol play", "cazavisión"
-        )
-
-        return sportsKeywords.any { cat.contains(it) || title.contains(it) || desc.contains(it) || ch.contains(it) || chId.contains(it) }
-    }
-
-    private fun determineSportCategory(prog: XmlTvProgram, channelName: String): String {
-        val combined = "${prog.category ?: ""} ${prog.title} ${prog.description ?: ""} $channelName".lowercase()
-
-        return when {
-            listOf("fútbol", "futbol", "laliga", "champions", "copa", "soccer", "eurocopa", "ucl", "uel").any { combined.contains(it) } -> "Fútbol"
-            listOf("baloncesto", "nba", "acb", "basket", "euroliga").any { combined.contains(it) } -> "Baloncesto"
-            listOf("motor", "f1", "fórmula", "formula", "motogp", "nascar", "rally", "dazn f1").any { combined.contains(it) } -> "Fórmula 1 / Motor"
-            listOf("tenis", "tennis", "atp", "wta", "roland garros", "wimbledon", "us open").any { combined.contains(it) } -> "Tenis"
-            else -> "Fútbol"
-        }
-    }
-
-    private fun determineCompetition(prog: XmlTvProgram, channelName: String): String {
-        val combined = "${prog.title} ${prog.description ?: ""} ${prog.category ?: ""}".lowercase()
-
-        return when {
-            combined.contains("laliga ea") || combined.contains("laliga ea sports") -> "LaLiga EA Sports"
-            combined.contains("laliga hypermotion") || combined.contains("laliga 2") -> "LaLiga Hypermotion"
-            combined.contains("champions") -> "UEFA Champions League"
-            combined.contains("europa league") -> "UEFA Europa League"
-            combined.contains("premier") -> "Premier League"
-            combined.contains("serie a") -> "Serie A"
-            combined.contains("bundesliga") -> "Bundesliga"
-            combined.contains("copa del rey") -> "Copa del Rey"
-            combined.contains("liga endesa") || combined.contains("acb") -> "Liga Endesa"
-            combined.contains("euroliga") -> "EuroLiga"
-            combined.contains("nba") -> "NBA"
-            combined.contains("fórmula 1") || combined.contains("formula 1") || combined.contains("f1") -> "Fórmula 1"
-            combined.contains("motogp") -> "MotoGP"
-            combined.contains("atp") -> "ATP Tour"
-            combined.contains("wta") -> "WTA Tour"
-            combined.contains("roland garros") -> "Roland Garros"
-            combined.contains("wimbledon") -> "Wimbledon"
-            prog.category?.isNotBlank() == true -> prog.category
-            else -> channelName
-        }
-    }
-
-    private fun findMatchingLiveChannel(
-        progChannelId: String,
-        channelDisplayName: String,
-        xmlDisplayNames: List<String>,
-        liveChannels: List<LiveChannel>
-    ): LiveChannel? {
-        if (liveChannels.isEmpty()) return null
-
-        val normProgId = normalizeName(progChannelId)
-        val normDisplayName = normalizeName(channelDisplayName)
-        val normXmlDisplayNames = xmlDisplayNames.map { normalizeName(it) }
-
-        return liveChannels.firstOrNull { ch ->
-            val normChName = normalizeName(ch.name)
-            val normChTvgId = ch.epgId?.let { normalizeName(it) } ?: ""
-
-            (normChTvgId.isNotBlank() && normChTvgId == normProgId) ||
-                    normChName == normDisplayName ||
-                    normXmlDisplayNames.contains(normChName) ||
-                    (normChName.length > 3 && normDisplayName.contains(normChName)) ||
-                    (normDisplayName.length > 3 && normChName.contains(normDisplayName))
-        }
-    }
-
-    private fun normalizeName(name: String): String {
-        return name.lowercase()
-            .replace("hd", "")
-            .replace("fhd", "")
-            .replace("sd", "")
-            .replace("4k", "")
-            .replace("movistar", "m")
-            .replace("[^a-z0-9]".toRegex(), "")
+        fetchSportsProgTxt(liveChannels)
     }
 }

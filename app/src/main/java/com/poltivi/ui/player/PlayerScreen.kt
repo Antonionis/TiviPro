@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -119,6 +120,9 @@ fun PlayerScreen(
     var currentStreamSubTitle by remember { mutableStateOf(playbackTarget.subTitle) }
     var currentStreamLogoUrl by remember { mutableStateOf(playbackTarget.logoUrl) }
     var currentStreamUrl by remember { mutableStateOf(playbackTarget.streamUrl) }
+
+    val isPremium by repository.isPremium.collectAsState()
+    var audioDelayMs by remember { mutableIntStateOf(0) }
 
     // Track Options
     var audioTracks by remember { mutableStateOf<List<TrackOption>>(emptyList()) }
@@ -317,6 +321,13 @@ fun PlayerScreen(
         }
     }
 
+    LaunchedEffect(audioDelayMs) {
+        try {
+            val method = exoPlayer.javaClass.methods.firstOrNull { it.name == "experimentalSetAudioOffsetUs" }
+            method?.invoke(exoPlayer, audioDelayMs * 1000L)
+        } catch (_: Exception) {}
+    }
+
     // Progress Update Timer
     LaunchedEffect(isPlaying) {
         while (isPlaying) {
@@ -420,7 +431,6 @@ fun PlayerScreen(
                     if (!isControlsVisible) {
                         triggerInteraction()
                         if (isSelectionKey) {
-                            if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                             return@onKeyEvent true
                         }
 
@@ -574,6 +584,9 @@ fun PlayerScreen(
             subtitleTracks = subtitleTracks,
             qualityOptions = qualityOptions,
             toastMessage = toastMessage,
+            audioDelayMs = audioDelayMs,
+            isPremium = isPremium,
+            onAudioDelayChange = { audioDelayMs = it },
             onPlayPauseToggle = {
                 triggerInteraction()
                 if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()

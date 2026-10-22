@@ -19,9 +19,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Security
+import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -65,6 +68,7 @@ fun HeaderBar(
     onAccountClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onToggleDoh: () -> Unit = {},
+    onMultiviewClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val rotation by animateFloatAsState(
@@ -80,11 +84,44 @@ fun HeaderBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left: PolTivi Logo
-        PolTiviLogo(
-            sizeScale = 0.8f,
-            modifier = Modifier.clickable { onAccountClick() }
-        )
+        // Left: PolTivi Logo + Multiview Button
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            PolTiviLogo(
+                sizeScale = 0.8f,
+                modifier = Modifier.clickable { onAccountClick() }
+            )
+
+            if (onMultiviewClick != null) {
+                FocusableCard(
+                    onClick = onMultiviewClick,
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                    elevation = 2.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.AspectRatio,
+                            contentDescription = "Modo Multiview",
+                            tint = OrangePrimary,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = "Multiview",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
 
         // Right Controls & Header Info
         Row(
@@ -148,6 +185,29 @@ fun HeaderBar(
                         color = Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // Reload Playlist Button (Actualizar Lista)
+            FocusableCard(
+                onClick = onReloadClick,
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                elevation = 2.dp,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "Actualizar Lista",
+                        tint = OrangePrimary,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .rotate(rotation)
                     )
                 }
             }

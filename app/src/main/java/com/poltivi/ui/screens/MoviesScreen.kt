@@ -26,11 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -38,21 +35,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -84,6 +78,7 @@ fun MoviesScreen(
     val filteredMovies = uiState.vodMovies
 
     val firstMovieFocusRequester = remember { FocusRequester() }
+    val selectedCategoryFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(filteredMovies) {
         if (filteredMovies.isNotEmpty()) {
@@ -172,7 +167,8 @@ fun MoviesScreen(
                     val isAllSelected = uiState.selectedVodCategory == null && !uiState.isMovieFavoritesSelected
                     FocusableCard(
                         onClick = { viewModel.selectVodCategory(null) },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isAllSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -199,7 +195,8 @@ fun MoviesScreen(
                     val isFavSelected = uiState.isMovieFavoritesSelected
                     FocusableCard(
                         onClick = { viewModel.selectMovieFavorites() },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isFavSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -226,7 +223,8 @@ fun MoviesScreen(
                     val isSelected = uiState.selectedVodCategory?.id == cat.id
                     FocusableCard(
                         onClick = { viewModel.selectVodCategory(cat) },
-                        shape = RoundedCornerShape(18.dp)
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = if (isSelected) Modifier.focusRequester(selectedCategoryFocusRequester) else Modifier
                     ) {
                         Box(
                             modifier = Modifier
@@ -261,7 +259,6 @@ fun MoviesScreen(
                     Text(text = "No se encontraron películas.", color = TextMuted, fontSize = 13.sp)
                 }
             } else {
-                // Adaptive Grid: minSize = 105.dp shows 4-5 posters on mobile and 6 on TV cleanly
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 105.dp),
                     contentPadding = PaddingValues(bottom = 12.dp),
@@ -269,11 +266,17 @@ fun MoviesScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(filteredMovies, key = { _, m -> m.id }) { index, movie ->
+                    itemsIndexed(filteredMovies, key = { index, m -> "${m.id}_$index" }) { index, movie ->
                         MoviePosterCard(
                             movie = movie,
                             onClick = { viewModel.selectMovie(movie) },
-                            modifier = if (index == 0) Modifier.focusRequester(firstMovieFocusRequester) else Modifier
+                            modifier = Modifier
+                                .focusProperties {
+                                    if (index == 0) {
+                                        up = selectedCategoryFocusRequester
+                                    }
+                                }
+                                .then(if (index == 0) Modifier.focusRequester(firstMovieFocusRequester) else Modifier)
                         )
                     }
                 }

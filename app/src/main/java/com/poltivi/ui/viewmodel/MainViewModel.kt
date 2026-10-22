@@ -30,7 +30,8 @@ enum class AppScreen {
     EPG,
     FAVORITES,
     SETTINGS,
-    SPORTS
+    SPORTS,
+    CATCHUP
 }
 
 data class PlaybackTarget(
@@ -92,6 +93,30 @@ class MainViewModel(
         startClockTimer()
         observeAccountDetails()
         observeLoginState()
+        performStartupSync()
+    }
+
+    private fun performStartupSync() {
+        viewModelScope.launch {
+            try {
+                val appCtx = com.poltivi.PolTiviApplication.instance
+                if (appCtx != null) {
+                    val status = com.poltivi.data.network.DeviceManager.verificarDispositivo(appCtx)
+                    repository.setPremiumStatus(status.isPremium)
+                }
+            } catch (_: Exception) {}
+
+            if (repository.isLoggedIn.value) {
+                _isReloading.value = true
+                try {
+                    repository.refreshData()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    _isReloading.value = false
+                }
+            }
+        }
     }
 
     private fun observeLoginState() {
@@ -108,8 +133,21 @@ class MainViewModel(
 
     private fun observeAccountDetails() {
         viewModelScope.launch {
-            repository.activeXtreamAccount.collect { acc ->
-                if (acc != null) {
+            kotlinx.coroutines.flow.combine(
+                repository.activePlaylist,
+                repository.activeXtreamAccount
+            ) { pl, acc ->
+                if (pl != null) {
+                    if (pl.mode == DataSourceMode.M3U) {
+                        _connectedUser.value = pl.name.ifBlank { "Lista M3U Conectada" }
+                        _accountExpiration.value = "Lista M3U (Sin caducidad)"
+                    } else {
+                        val user = acc?.authResponse?.userInfo?.username?.ifBlank { pl.username.ifBlank { pl.name } }
+                            ?: pl.username.ifBlank { pl.name }
+                        _connectedUser.value = if (user.isNotBlank()) user else "Usuario Activo"
+                        _accountExpiration.value = formatExpirationDate(acc?.authResponse?.userInfo?.expDate)
+                    }
+                } else if (acc != null) {
                     val user = acc.authResponse?.userInfo?.username?.ifBlank { acc.username } ?: acc.username
                     _connectedUser.value = if (user.isNotBlank()) user else "Usuario Activo"
                     _accountExpiration.value = formatExpirationDate(acc.authResponse?.userInfo?.expDate)
@@ -117,7 +155,7 @@ class MainViewModel(
                     _connectedUser.value = "Usuario Activo"
                     _accountExpiration.value = formatExpirationDate(null)
                 }
-            }
+            }.collect {}
         }
     }
 

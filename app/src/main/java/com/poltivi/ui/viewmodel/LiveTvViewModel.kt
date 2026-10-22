@@ -15,6 +15,7 @@ data class LiveTvUiState(
     val categories: List<Category> = emptyList(),
     val selectedCategory: Category? = null,
     val isFavoritesSelected: Boolean = false,
+    val isCatchupSelected: Boolean = false,
     val channels: List<LiveChannel> = emptyList(),
     val selectedChannel: LiveChannel? = null,
     val epgPrograms: List<EpgProgram> = emptyList(),
@@ -22,7 +23,7 @@ data class LiveTvUiState(
 )
 
 class LiveTvViewModel(
-    private val repository: DataRepository
+    val repository: DataRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LiveTvUiState())
@@ -30,6 +31,27 @@ class LiveTvViewModel(
 
     init {
         loadData()
+        observeEpgSourceMode()
+    }
+
+    private fun observeEpgSourceMode() {
+        viewModelScope.launch {
+            repository.epgSourceMode.collect {
+                refreshEpgData()
+            }
+        }
+    }
+
+    fun refreshEpgData() {
+        viewModelScope.launch {
+            val activeChannel = _uiState.value.selectedChannel
+            if (activeChannel != null) {
+                try {
+                    val epg = repository.getEpgForChannel(activeChannel.id, activeChannel.epgId)
+                    _uiState.value = _uiState.value.copy(epgPrograms = epg)
+                } catch (_: Exception) {}
+            }
+        }
     }
 
     fun loadData() {
@@ -37,7 +59,9 @@ class LiveTvViewModel(
             _uiState.value = _uiState.value.copy(isLoading = true)
             try {
                 val cats = repository.getLiveCategories()
-                val channels = if (_uiState.value.isFavoritesSelected) {
+                val channels = if (_uiState.value.isCatchupSelected) {
+                    repository.getCatchupChannels()
+                } else if (_uiState.value.isFavoritesSelected) {
                     repository.getFavoriteChannels()
                 } else {
                     repository.getLiveChannels(_uiState.value.selectedCategory?.id)
@@ -67,7 +91,12 @@ class LiveTvViewModel(
 
     fun selectCategory(category: Category?) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(selectedCategory = category, isFavoritesSelected = false, isLoading = true)
+            _uiState.value = _uiState.value.copy(
+                selectedCategory = category,
+                isFavoritesSelected = false,
+                isCatchupSelected = false,
+                isLoading = true
+            )
             try {
                 val channels = repository.getLiveChannels(category?.id)
                 val firstChannel = channels.firstOrNull()
@@ -89,7 +118,12 @@ class LiveTvViewModel(
 
     fun selectFavorites() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(selectedCategory = null, isFavoritesSelected = true, isLoading = true)
+            _uiState.value = _uiState.value.copy(
+                selectedCategory = null,
+                isFavoritesSelected = true,
+                isCatchupSelected = false,
+                isLoading = true
+            )
             try {
                 val favs = repository.getFavoriteChannels()
                 val firstChannel = favs.firstOrNull()
@@ -99,6 +133,33 @@ class LiveTvViewModel(
 
                 _uiState.value = _uiState.value.copy(
                     channels = favs,
+                    selectedChannel = firstChannel,
+                    epgPrograms = epg,
+                    isLoading = false
+                )
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun selectCatchup() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                selectedCategory = null,
+                isFavoritesSelected = false,
+                isCatchupSelected = true,
+                isLoading = true
+            )
+            try {
+                val catchupChs = repository.getCatchupChannels()
+                val firstChannel = catchupChs.firstOrNull()
+                val epg = if (firstChannel != null) {
+                    repository.getEpgForChannel(firstChannel.id, firstChannel.epgId)
+                } else emptyList()
+
+                _uiState.value = _uiState.value.copy(
+                    channels = catchupChs,
                     selectedChannel = firstChannel,
                     epgPrograms = epg,
                     isLoading = false
@@ -123,7 +184,13 @@ class LiveTvViewModel(
         repository.toggleFavoriteChannel(channelId)
         viewModelScope.launch {
             try {
-                val updatedChannels = repository.getLiveChannels(_uiState.value.selectedCategory?.id)
+                val updatedChannels = if (_uiState.value.isCatchupSelected) {
+                    repository.getCatchupChannels()
+                } else if (_uiState.value.isFavoritesSelected) {
+                    repository.getFavoriteChannels()
+                } else {
+                    repository.getLiveChannels(_uiState.value.selectedCategory?.id)
+                }
                 _uiState.value = _uiState.value.copy(channels = updatedChannels)
             } catch (_: Exception) {}
         }

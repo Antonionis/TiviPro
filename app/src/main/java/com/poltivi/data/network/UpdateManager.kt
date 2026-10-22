@@ -100,7 +100,7 @@ object UpdateManager {
                     return@withContext UpdateInfo(
                         isUpdateAvailable = isAvailable,
                         versionCode = currentVersionCode + 1,
-                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.5",
                         apkUrl = apkUrl,
                         changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
                     )
@@ -110,7 +110,7 @@ object UpdateManager {
 
         // Try 2: Fallback version.json
         try {
-            val fallbackUrl = "https://raw.githubusercontent.com/poltivi/poltivi/main/version.json"
+            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/PolTivi/main/version.json"
             val request = Request.Builder()
                 .url(fallbackUrl)
                 .header("User-Agent", "PolTivi-App")
@@ -123,7 +123,7 @@ object UpdateManager {
                     val json = JSONObject(jsonStr)
 
                     val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
-                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/poltivi/poltivi/releases/latest/download/poltivi.apk"))
+                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk"))
                     val changelog = json.optString("changelog", "• Nueva versión disponible en GitHub.")
 
                     val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
@@ -131,7 +131,7 @@ object UpdateManager {
                     return@withContext UpdateInfo(
                         isUpdateAvailable = isAvailable,
                         versionCode = currentVersionCode + 1,
-                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.4",
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.5",
                         apkUrl = apkUrl,
                         changelog = changelog
                     )

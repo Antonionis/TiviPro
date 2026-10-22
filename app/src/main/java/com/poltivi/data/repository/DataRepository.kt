@@ -12,6 +12,8 @@ import com.poltivi.model.Series
 import com.poltivi.model.SportsEvent
 import com.poltivi.model.VodMovie
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,6 +23,11 @@ enum class DataSourceMode {
     MOCK,
     XTREAM,
     M3U
+}
+
+enum class EpgSourceMode {
+    POLTIVI,
+    PROVIDER
 }
 
 data class XtreamServerAccount(
@@ -40,9 +47,14 @@ interface DataRepository {
     val isLoggedIn: StateFlow<Boolean>
     val activeMode: StateFlow<DataSourceMode>
     val activeXtreamAccount: StateFlow<XtreamServerAccount?>
+    val activePlaylist: StateFlow<com.poltivi.model.SavedPlaylist?>
     val isDohEnabled: StateFlow<Boolean>
+    val epgSourceMode: StateFlow<EpgSourceMode>
+    val isPremium: StateFlow<Boolean>
 
     fun setDohEnabled(enabled: Boolean)
+    fun setEpgSourceMode(mode: EpgSourceMode)
+    fun setPremiumStatus(isPremium: Boolean)
     fun getOkHttpClient(): okhttp3.OkHttpClient
     fun getPlayerOkHttpClient(): okhttp3.OkHttpClient
 
@@ -82,6 +94,13 @@ interface DataRepository {
     fun importLocalBackup(): Boolean
     fun exportBackupToJson(): String
     fun importBackupFromJson(jsonStr: String): Boolean
+
+    fun getSavedPlaylists(): List<com.poltivi.model.SavedPlaylist>
+    fun savePlaylist(playlist: com.poltivi.model.SavedPlaylist)
+    fun deletePlaylist(playlistId: String)
+    suspend fun switchPlaylist(playlistId: String): Boolean
+    suspend fun getCatchupChannels(): List<LiveChannel>
+    fun buildCatchupStreamUrl(streamId: String, startTimestampSec: Long, durationMinutes: Long): String
 }
 
 class DataRepositoryImpl(
@@ -130,10 +149,48 @@ class DataRepositoryImpl(
     )
     override val activeXtreamAccount: StateFlow<XtreamServerAccount?> = _activeXtreamAccount.asStateFlow()
 
+    private val _activePlaylist = MutableStateFlow<com.poltivi.model.SavedPlaylist?>(null)
+    override val activePlaylist: StateFlow<com.poltivi.model.SavedPlaylist?> = _activePlaylist.asStateFlow()
+
     override val isDohEnabled: StateFlow<Boolean> = com.poltivi.data.network.NetworkModule.isDohEnabled
 
     override fun setDohEnabled(enabled: Boolean) {
         com.poltivi.data.network.NetworkModule.setDohEnabled(enabled)
+    }
+
+    private val _epgSourceMode = MutableStateFlow<EpgSourceMode>(
+        if (prefs?.getString("epg_source_mode", "POLTIVI") == "PROVIDER") EpgSourceMode.PROVIDER else EpgSourceMode.POLTIVI
+    )
+    override val epgSourceMode: StateFlow<EpgSourceMode> = _epgSourceMode.asStateFlow()
+
+    override fun setEpgSourceMode(mode: EpgSourceMode) {
+        _epgSourceMode.value = mode
+        prefs?.edit()?.putString("epg_source_mode", mode.name)?.apply()
+    }
+
+    private val _isPremium = MutableStateFlow<Boolean>(
+        prefs?.getBoolean("is_premium", false) == true ||
+        appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.getBoolean("is_premium", false) == true
+    )
+    override val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
+
+    override fun setPremiumStatus(isPremium: Boolean) {
+        _isPremium.value = isPremium
+        prefs?.edit()?.putBoolean("is_premium", isPremium)?.apply()
+        try {
+            appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.edit()?.putBoolean("is_premium", isPremium)?.apply()
+        } catch (_: Exception) {}
+
+        if (!isPremium) {
+            saveCategoryOrder(emptyList())
+            val currentList = getSavedPlaylists()
+            if (currentList.size > 1) {
+                val active = currentList.firstOrNull { it.isActive } ?: currentList.firstOrNull()
+                if (active != null) {
+                    persistPlaylists(listOf(active.copy(isActive = true)))
+                }
+            }
+        }
     }
 
     override fun getOkHttpClient(): okhttp3.OkHttpClient {
@@ -146,17 +203,23 @@ class DataRepositoryImpl(
 
     private var cachedM3uResult: com.poltivi.data.parser.M3UParseResult? = null
 
-    private val favoriteChannelIds = mutableSetOf<String>()
-    private val favoriteMovieIds = mutableSetOf<String>()
-    private val favoriteSeriesIds = mutableSetOf<String>()
+    private val favoriteChannelIds = mutableSetOf<String>().apply {
+        addAll(prefs?.getStringSet("favorite_channel_ids", emptySet()) ?: emptySet())
+    }
+    private val favoriteMovieIds = mutableSetOf<String>().apply {
+        addAll(prefs?.getStringSet("favorite_movie_ids", emptySet()) ?: emptySet())
+    }
+    private val favoriteSeriesIds = mutableSetOf<String>().apply {
+        addAll(prefs?.getStringSet("favorite_series_ids", emptySet()) ?: emptySet())
+    }
 
     // In-memory cache for loaded real data
-    private var xtreamLiveCategories = listOf<Category>()
-    private var xtreamLiveChannels = listOf<LiveChannel>()
-    private var xtreamVodCategories = listOf<Category>()
-    private var xtreamVodMovies = listOf<VodMovie>()
-    private var xtreamSeriesCategories = listOf<Category>()
-    private var xtreamSeriesList = listOf<Series>()
+    @Volatile private var xtreamLiveCategories = listOf<Category>()
+    @Volatile private var xtreamLiveChannels = listOf<LiveChannel>()
+    @Volatile private var xtreamVodCategories = listOf<Category>()
+    @Volatile private var xtreamVodMovies = listOf<VodMovie>()
+    @Volatile private var xtreamSeriesCategories = listOf<Category>()
+    @Volatile private var xtreamSeriesList = listOf<Series>()
 
     override fun saveSession(serverUrl: String, username: String, pass: String, authResponse: AuthResponse?) {
         _isLoggedIn.value = true
@@ -293,6 +356,7 @@ class DataRepositoryImpl(
                 for (i in 0 until favChannelsArray.length()) {
                     favoriteChannelIds.add(favChannelsArray.getString(i))
                 }
+                prefs?.edit()?.putStringSet("favorite_channel_ids", favoriteChannelIds.toSet())?.apply()
             }
 
             val favMoviesArray = json.optJSONArray("favorite_movies")
@@ -301,6 +365,7 @@ class DataRepositoryImpl(
                 for (i in 0 until favMoviesArray.length()) {
                     favoriteMovieIds.add(favMoviesArray.getString(i))
                 }
+                prefs?.edit()?.putStringSet("favorite_movie_ids", favoriteMovieIds.toSet())?.apply()
             }
 
             val favSeriesArray = json.optJSONArray("favorite_series")
@@ -309,6 +374,7 @@ class DataRepositoryImpl(
                 for (i in 0 until favSeriesArray.length()) {
                     favoriteSeriesIds.add(favSeriesArray.getString(i))
                 }
+                prefs?.edit()?.putStringSet("favorite_series_ids", favoriteSeriesIds.toSet())?.apply()
             }
 
             val p = prefs
@@ -336,12 +402,17 @@ class DataRepositoryImpl(
                 savedAtLeastOne = true
             }
 
+            // Save as goaltv_backup.json and poltivi_backup.json
+            val filenames = listOf("goaltv_backup.json", "poltivi_backup.json")
+
             // 1. Try Internal Files Dir
             try {
                 appContext?.let { ctx ->
-                    val file = java.io.File(ctx.filesDir, "poltivi_backup.json")
-                    if (file.exists()) file.delete()
-                    file.writeText(jsonStr)
+                    for (fn in filenames) {
+                        val file = java.io.File(ctx.filesDir, fn)
+                        if (file.exists()) file.delete()
+                        file.writeText(jsonStr)
+                    }
                     savedAtLeastOne = true
                 }
             } catch (e: Exception) {
@@ -354,9 +425,11 @@ class DataRepositoryImpl(
                     val extDir = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: ctx.getExternalFilesDir(null)
                     if (extDir != null) {
                         if (!extDir.exists()) extDir.mkdirs()
-                        val file = java.io.File(extDir, "poltivi_backup.json")
-                        if (file.exists()) file.delete()
-                        file.writeText(jsonStr)
+                        for (fn in filenames) {
+                            val file = java.io.File(extDir, fn)
+                            if (file.exists()) file.delete()
+                            file.writeText(jsonStr)
+                        }
                         savedAtLeastOne = true
                     }
                 }
@@ -369,9 +442,11 @@ class DataRepositoryImpl(
                 val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
                 if (downloadsDir != null) {
                     if (!downloadsDir.exists()) downloadsDir.mkdirs()
-                    val file = java.io.File(downloadsDir, "poltivi_backup.json")
-                    if (file.exists()) file.delete()
-                    file.writeText(jsonStr)
+                    for (fn in filenames) {
+                        val file = java.io.File(downloadsDir, fn)
+                        if (file.exists()) file.delete()
+                        file.writeText(jsonStr)
+                    }
                     savedAtLeastOne = true
                 }
             } catch (e: Exception) {
@@ -388,38 +463,52 @@ class DataRepositoryImpl(
     override fun importLocalBackup(): Boolean {
         return try {
             var rawJson = ""
+            val filenames = listOf("poltivi_backup.json", "goaltv_backup.json")
 
-            // 1. Check SharedPreferences Backup
-            rawJson = prefs?.getString("poltivi_local_backup", "") ?: ""
-
-            // 2. Check Internal Files Dir
-            if (rawJson.isBlank()) {
-                appContext?.let { ctx ->
-                    val intFile = java.io.File(ctx.filesDir, "poltivi_backup.json")
-                    if (intFile.exists() && intFile.length() > 0) {
-                        rawJson = intFile.readText()
+            // 1. Check Public Downloads first (for poltivi_backup.json then goaltv_backup.json)
+            val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            if (downloadsDir != null && downloadsDir.exists()) {
+                for (fn in filenames) {
+                    val pubFile = java.io.File(downloadsDir, fn)
+                    if (pubFile.exists() && pubFile.length() > 0) {
+                        rawJson = pubFile.readText()
+                        if (rawJson.isNotBlank()) break
                     }
                 }
             }
 
-            // 3. Check App External Files Dir
+            // 2. Check App External Files Dir
             if (rawJson.isBlank()) {
                 appContext?.let { ctx ->
                     val extDir = ctx.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: ctx.getExternalFilesDir(null)
-                    val extFile = java.io.File(extDir, "poltivi_backup.json")
-                    if (extFile.exists() && extFile.length() > 0) {
-                        rawJson = extFile.readText()
+                    if (extDir != null && extDir.exists()) {
+                        for (fn in filenames) {
+                            val extFile = java.io.File(extDir, fn)
+                            if (extFile.exists() && extFile.length() > 0) {
+                                rawJson = extFile.readText()
+                                if (rawJson.isNotBlank()) break
+                            }
+                        }
                     }
                 }
             }
 
-            // 4. Check Public Downloads
+            // 3. Check Internal Files Dir
             if (rawJson.isBlank()) {
-                val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
-                val pubFile = java.io.File(downloadsDir, "poltivi_backup.json")
-                if (pubFile.exists() && pubFile.length() > 0) {
-                    rawJson = pubFile.readText()
+                appContext?.let { ctx ->
+                    for (fn in filenames) {
+                        val intFile = java.io.File(ctx.filesDir, fn)
+                        if (intFile.exists() && intFile.length() > 0) {
+                            rawJson = intFile.readText()
+                            if (rawJson.isNotBlank()) break
+                        }
+                    }
                 }
+            }
+
+            // 4. Check SharedPreferences Backup
+            if (rawJson.isBlank()) {
+                rawJson = prefs?.getString("poltivi_local_backup", "") ?: ""
             }
 
             if (rawJson.isBlank()) return false
@@ -441,6 +530,21 @@ class DataRepositoryImpl(
     }
 
     override suspend fun refreshData() {
+        if (_activeMode.value == DataSourceMode.M3U) {
+            val savedM3uUrl = prefs?.getString("m3u_url", "") ?: ""
+            if (savedM3uUrl.isNotBlank()) {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val result = m3uRepository.fetchAndParseFromUrl(savedM3uUrl)
+                        result.getOrNull()?.let { parseResult ->
+                            cachedM3uResult = parseResult
+                        }
+                    }
+                }
+            }
+            return
+        }
+
         val acc = _activeXtreamAccount.value ?: run {
             val savedServer = prefs?.getString("server_url", "") ?: ""
             val savedUser = prefs?.getString("username", "") ?: ""
@@ -470,12 +574,28 @@ class DataRepositoryImpl(
                     _activeXtreamAccount.value = acc.copy(authResponse = authRes)
                 }
 
-                xtreamLiveCategories = xtreamRepository.getLiveCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
-                xtreamLiveChannels = xtreamRepository.getLiveChannels(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
-                xtreamVodCategories = xtreamRepository.getVodCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
-                xtreamVodMovies = xtreamRepository.getVodMovies(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
-                xtreamSeriesCategories = xtreamRepository.getSeriesCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
-                xtreamSeriesList = xtreamRepository.getSeriesList(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList())
+                coroutineScope {
+                    val liveCatsDeferred = async { xtreamRepository.getLiveCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+                    val liveChsDeferred = async { xtreamRepository.getLiveChannels(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+                    val vodCatsDeferred = async { xtreamRepository.getVodCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+                    val vodMovsDeferred = async { xtreamRepository.getVodMovies(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+                    val serCatsDeferred = async { xtreamRepository.getSeriesCategories(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+                    val serListDeferred = async { xtreamRepository.getSeriesList(acc.serverUrl, acc.username, acc.password).getOrDefault(emptyList()) }
+
+                    val liveCats = liveCatsDeferred.await()
+                    val liveChs = liveChsDeferred.await()
+                    val vodCats = vodCatsDeferred.await()
+                    val vodMovs = vodMovsDeferred.await()
+                    val serCats = serCatsDeferred.await()
+                    val serList = serListDeferred.await()
+
+                    if (liveCats.isNotEmpty()) xtreamLiveCategories = liveCats
+                    if (liveChs.isNotEmpty()) xtreamLiveChannels = liveChs
+                    if (vodCats.isNotEmpty()) xtreamVodCategories = vodCats
+                    if (vodMovs.isNotEmpty()) xtreamVodMovies = vodMovs
+                    if (serCats.isNotEmpty()) xtreamSeriesCategories = serCats
+                    if (serList.isNotEmpty()) xtreamSeriesList = serList
+                }
             }
         }
     }
@@ -553,6 +673,19 @@ class DataRepositoryImpl(
                 isFavorite = favoriteChannelIds.contains(ch.id)
             )
         }
+    }
+
+    override suspend fun getCatchupChannels(): List<LiveChannel> {
+        val hidden = getHiddenCategoryIds()
+        val allChannels = getLiveChannels()
+        return allChannels.filter { it.tvArchive == 1 && !hidden.contains(it.categoryId) }
+    }
+
+    override fun buildCatchupStreamUrl(streamId: String, startTimestampSec: Long, durationMinutes: Long): String {
+        val acc = _activeXtreamAccount.value ?: return ""
+        return xtreamRepository.buildCatchupStreamUrl(
+            acc.serverUrl, acc.username, acc.password, streamId, startTimestampSec, durationMinutes
+        )
     }
 
     override suspend fun getVodCategories(): List<Category> {
@@ -684,20 +817,72 @@ class DataRepositoryImpl(
             return cleanTarget == "ten" && cleanXmlName == "ten"
         }
 
-        if (cleanTarget == "la 1") return cleanXmlName.startsWith("la 1")
-        if (cleanTarget == "la 2") return cleanXmlName.startsWith("la 2")
+        if (cleanTarget == "la 1" || cleanXmlName == "la 1") {
+            return cleanTarget.startsWith("la 1") && cleanXmlName.startsWith("la 1")
+        }
+        if (cleanTarget == "la 2" || cleanXmlName == "la 2") {
+            return cleanTarget.startsWith("la 2") && cleanXmlName.startsWith("la 2")
+        }
 
         // Strict channel number matching (e.g. "m+ liga de campeones 1" vs "2")
         val targetNum = Regex("""\b(\d+)\b""").find(cleanTarget)?.value
         val xmlNum = Regex("""\b(\d+)\b""").find(cleanXmlName)?.value
         if (targetNum != null || xmlNum != null) {
-            return targetNum == xmlNum && (cleanTarget.contains(cleanXmlName) || cleanXmlName.contains(cleanTarget))
+            if (targetNum != xmlNum) return false
         }
 
-        return cleanTarget.contains(cleanXmlName) || cleanXmlName.contains(cleanTarget)
+        // Avoid matching generic short names (e.g. "m+", "es", "la", "tv")
+        if (cleanTarget.length < 4 || cleanXmlName.length < 4) return false
+
+        // For substring matches, both cleanTarget and cleanXmlName must share the primary name token
+        // and not differ by key suffixes (like "2", "3", "360", "bar", "latam")
+        val targetTokens = cleanTarget.split(" ").filter { it.isNotBlank() }
+        val xmlTokens = cleanXmlName.split(" ").filter { it.isNotBlank() }
+
+        if (targetTokens.size > 1 && xmlTokens.size > 1) {
+            val targetLast = targetTokens.last()
+            val xmlLast = xmlTokens.last()
+            if (targetLast != xmlLast && (targetLast.length <= 3 || xmlLast.length <= 3)) {
+                return false
+            }
+        }
+
+        return t.contains(x) || x.contains(t)
     }
 
     override suspend fun getEpgForChannel(channelId: String, streamId: String?): List<EpgProgram> = withContext(Dispatchers.IO) {
+        if (_epgSourceMode.value == EpgSourceMode.PROVIDER) {
+            if (_activeMode.value == DataSourceMode.XTREAM) {
+                if (xtreamLiveChannels.isEmpty()) {
+                    getLiveChannels()
+                }
+                val acc = _activeXtreamAccount.value
+                if (acc != null) {
+                    val targetChannel = xtreamLiveChannels.firstOrNull {
+                        it.id == channelId || it.epgId == channelId || (streamId != null && (it.id == streamId || it.epgId == streamId))
+                    }
+                    val sId = targetChannel?.id ?: streamId ?: channelId
+                    val result = xtreamRepository.getShortEpg(acc.serverUrl, acc.username, acc.password, sId, limit = 10)
+                    if (result.isSuccess) {
+                        val providerProgs = result.getOrDefault(emptyList())
+                        if (providerProgs.isNotEmpty()) {
+                            val nowSec = System.currentTimeMillis() / 1000L
+                            return@withContext providerProgs.map { p ->
+                                val live = nowSec in p.startTimestamp..p.endTimestamp
+                                val catchup = if (targetChannel != null && targetChannel.tvArchive == 1 && p.endTimestamp < nowSec) {
+                                    val durationMins = ((p.endTimestamp - p.startTimestamp) / 60L).coerceAtLeast(1L)
+                                    xtreamRepository.buildCatchupStreamUrl(acc.serverUrl, acc.username, acc.password, targetChannel.id, p.startTimestamp, durationMins)
+                                } else null
+
+                                p.copy(isLive = live, catchupUrl = catchup)
+                            }.sortedBy { it.startTimestamp }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default or Fallback: PolTivi EPG (External DobleM EPG)
         try {
             val xmlTvResult = sportsRepository.getXmlTvData()
             if (xmlTvResult.programs.isEmpty()) return@withContext emptyList()
@@ -707,6 +892,7 @@ class DataRepositoryImpl(
             }
 
             val targetChannel = xtreamLiveChannels.firstOrNull { it.id == channelId || it.epgId == channelId || (streamId != null && it.epgId == streamId) }
+            val acc = _activeXtreamAccount.value
             val rawName = targetChannel?.name ?: channelId
             val cleanedName = cleanChannelNameForEpg(rawName)
             val tvgId = targetChannel?.epgId
@@ -728,6 +914,11 @@ class DataRepositoryImpl(
                 val nowSec = System.currentTimeMillis() / 1000L
                 return@withContext matchingProgs.map { p ->
                     val live = nowSec in p.startTimeSeconds..p.stopTimeSeconds
+                    val catchup = if (targetChannel != null && targetChannel.tvArchive == 1 && acc != null && p.stopTimeSeconds < nowSec) {
+                        val durationMins = ((p.stopTimeSeconds - p.startTimeSeconds) / 60L).coerceAtLeast(1L)
+                        xtreamRepository.buildCatchupStreamUrl(acc.serverUrl, acc.username, acc.password, targetChannel.id, p.startTimeSeconds, durationMins)
+                    } else null
+
                     EpgProgram(
                         id = "${p.channelId}_${p.startTimeSeconds}",
                         channelId = channelId,
@@ -735,15 +926,131 @@ class DataRepositoryImpl(
                         description = p.description ?: "",
                         startTimestamp = p.startTimeSeconds,
                         endTimestamp = p.stopTimeSeconds,
-                        isLive = live
+                        isLive = live,
+                        catchupUrl = catchup
                     )
                 }.sortedBy { it.startTimestamp }
             }
             emptyList()
-        } catch (e: Exception) {
-            e.printStackTrace()
+        } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    override fun getSavedPlaylists(): List<com.poltivi.model.SavedPlaylist> {
+        val jsonStr = prefs?.getString("saved_playlists_json", "") ?: ""
+        if (jsonStr.isBlank()) {
+            val acc = _activeXtreamAccount.value
+            if (acc != null && acc.serverUrl.isNotBlank()) {
+                val defaultPl = com.poltivi.model.SavedPlaylist(
+                    id = "default_1",
+                    name = "Lista Principal",
+                    mode = DataSourceMode.XTREAM,
+                    serverUrl = acc.serverUrl,
+                    username = acc.username,
+                    password = acc.password,
+                    isActive = true
+                )
+                val list = listOf(defaultPl)
+                persistPlaylists(list)
+                return list
+            }
+            return emptyList()
+        }
+        val res = try {
+            val array = org.json.JSONArray(jsonStr)
+            val list = mutableListOf<com.poltivi.model.SavedPlaylist>()
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val id = obj.optString("id")
+                val name = obj.optString("name")
+                val modeStr = obj.optString("mode", "XTREAM")
+                val mode = if (modeStr == "M3U") DataSourceMode.M3U else DataSourceMode.XTREAM
+                val serverUrl = obj.optString("serverUrl")
+                val username = obj.optString("username")
+                val password = obj.optString("password")
+                val m3uUrl = obj.optString("m3uUrl")
+                val isActive = obj.optBoolean("isActive", false)
+                list.add(
+                    com.poltivi.model.SavedPlaylist(
+                        id = id,
+                        name = name,
+                        mode = mode,
+                        serverUrl = serverUrl,
+                        username = username,
+                        password = password,
+                        m3uUrl = m3uUrl,
+                        isActive = isActive
+                    )
+                )
+            }
+            list
+        } catch (_: Exception) {
+            emptyList()
+        }
+        _activePlaylist.value = res.firstOrNull { it.isActive } ?: res.firstOrNull()
+        return res
+    }
+
+    override fun savePlaylist(playlist: com.poltivi.model.SavedPlaylist) {
+        val currentList = getSavedPlaylists().toMutableList()
+        val existingIndex = currentList.indexOfFirst { it.id == playlist.id }
+        if (existingIndex >= 0) {
+            currentList[existingIndex] = playlist
+        } else {
+            currentList.add(playlist)
+        }
+        persistPlaylists(currentList)
+    }
+
+    override fun deletePlaylist(playlistId: String) {
+        val currentList = getSavedPlaylists().filter { it.id != playlistId }
+        persistPlaylists(currentList)
+    }
+
+    override suspend fun switchPlaylist(playlistId: String): Boolean {
+        val currentList = getSavedPlaylists()
+        val target = currentList.firstOrNull { it.id == playlistId } ?: return false
+
+        val updatedList = currentList.map { pl ->
+            pl.copy(isActive = pl.id == playlistId)
+        }
+        persistPlaylists(updatedList)
+
+        _activePlaylist.value = target.copy(isActive = true)
+
+        if (target.mode == DataSourceMode.XTREAM) {
+            saveSession(target.serverUrl, target.username, target.password)
+            val authRes = xtreamRepository.authenticate(target.serverUrl, target.username, target.password)
+            if (authRes.isSuccess) {
+                refreshData()
+                return true
+            }
+        } else if (target.mode == DataSourceMode.M3U) {
+            loadM3uFromUrl(target.m3uUrl)
+            return true
+        }
+        return false
+    }
+
+    private fun persistPlaylists(list: List<com.poltivi.model.SavedPlaylist>) {
+        try {
+            val array = org.json.JSONArray()
+            for (pl in list) {
+                val obj = org.json.JSONObject().apply {
+                    put("id", pl.id)
+                    put("name", pl.name)
+                    put("mode", pl.mode.name)
+                    put("serverUrl", pl.serverUrl)
+                    put("username", pl.username)
+                    put("password", pl.password)
+                    put("m3uUrl", pl.m3uUrl)
+                    put("isActive", pl.isActive)
+                }
+                array.put(obj)
+            }
+            prefs?.edit()?.putString("saved_playlists_json", array.toString())?.apply()
+        } catch (_: Exception) {}
     }
 
     override suspend fun getSportsEvents(): List<SportsEvent> = withContext(Dispatchers.IO) {
@@ -772,6 +1079,7 @@ class DataRepositoryImpl(
         } else {
             favoriteChannelIds.add(channelId)
         }
+        prefs?.edit()?.putStringSet("favorite_channel_ids", favoriteChannelIds.toSet())?.apply()
     }
 
     override fun toggleFavoriteMovie(movieId: String) {
@@ -780,6 +1088,7 @@ class DataRepositoryImpl(
         } else {
             favoriteMovieIds.add(movieId)
         }
+        prefs?.edit()?.putStringSet("favorite_movie_ids", favoriteMovieIds.toSet())?.apply()
     }
 
     override fun toggleFavoriteSeries(seriesId: String) {
@@ -788,6 +1097,7 @@ class DataRepositoryImpl(
         } else {
             favoriteSeriesIds.add(seriesId)
         }
+        prefs?.edit()?.putStringSet("favorite_series_ids", favoriteSeriesIds.toSet())?.apply()
     }
 
     override fun getFavoriteChannels(): List<LiveChannel> {
