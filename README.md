@@ -1,7 +1,7 @@
 # ⚽ PolTivi - Reproductor IPTV con Guía Deportiva y EPG
 
 <p align="center">
-  <img src="app/src/main/res/drawable/iconoredondo.webp" width="140" alt="PolTivi Logo" />
+  <img src="app/src/main/res/drawable/logo.png" width="140" alt="PolTivi Logo" />
 </p>
 
 <p align="center">
@@ -71,7 +71,7 @@
 
 Puedes descargar la última versión compilada lista para instalar en tu Smart TV o teléfono móvil desde la sección de Releases:
 
-👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/poltivi/poltivi/releases/latest)**
+👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk)**
 
 ---
 
@@ -90,4 +90,4 @@ Puedes descargar la última versión compilada lista para instalar en tu Smart T
 
 Este proyecto está distribuido bajo la licencia pública para uso personal y comunitario.
 
-Developed with ❤️ by **PolTivi**.
+Developed with ❤️ by Antonioni.

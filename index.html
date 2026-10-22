@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolTivi - El mejor reproductor IPTV para todos tus dispositivos[cite: 6]</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#030816',
+                            card: '#0a122c',
+                            border: '#1e295d',
+                            primary: '#0052d4',
+                            secondary: '#4364f7',
+                            cyan: '#6fb1fc',
+                            accent: '#00d2ff'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'glow-blue': '0 0 35px -5px rgba(0, 210, 255, 0.4)',
+                        'glow-pill': '0 10px 30px -5px rgba(67, 100, 247, 0.5)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #030816;
+            color: #f1f5f9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .bg-gradient-brand {
+            background: linear-gradient(135deg, #0052d4 0%, #4364f7 50%, #6fb1fc 100%);
+        }
+
+        .text-gradient-brand {
+            background: linear-gradient(135deg, #ffffff 0%, #6fb1fc 50%, #00d2ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pill-badge {
+            background: linear-gradient(90deg, #0036a7 0%, #0072ff 50%, #00c6ff 100%);
+            border-radius: 9999px;
+            box-shadow: 0 8px 25px rgba(0, 114, 255, 0.35);
+        }
+
+        .glass-card {
+            background: rgba(10, 18, 44, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card:hover {
+            border-color: rgba(111, 177, 252, 0.3);
+        }
+
+        @keyframes subtleGlow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.03); }
+        }
+
+        .animate-glow {
+            animation: subtleGlow 6s ease-in-out infinite;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-brand-accent selection:text-black">
+
+    <!-- Iluminación de Fondo Ambientales -->
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-brand-primary/20 blur-[140px] pointer-events-none -z-10 rounded-full animate-glow"></div>
+    <div class="fixed bottom-0 right-0 w-[500px] h-[500px] bg-brand-accent/10 blur-[160px] pointer-events-none -z-10 rounded-full"></div>
+
+    <!-- HEADER / NAVEGACIÓN -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-brand-dark/80 border-b border-white/5 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- LOGO POLTIVI -->
+                <a href="#" class="flex items-center gap-3 group">
+                    <img src="logo.png" alt="PolTivi Logo" class="h-10 sm:h-12 w-auto object-contain transition-transform group-hover:scale-105" 
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'pill-badge px-5 py-2.5 flex items-center gap-2 border border-white/25\'><div class=\'w-6 h-6 bg-white rounded-full flex items-center justify-center text-brand-primary font-black text-xs\'>▶</div><span class=\'font-black text-xl text-white tracking-wider\'>PolTivi</span></div>';">
+                </a>
+
+                <!-- NAV DESKTOP -->
+                <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-300">
+                    <a href="#inicio" class="hover:text-brand-cyan transition-colors">Inicio</a>
+                    <a href="#caracteristicas" class="hover:text-brand-cyan transition-colors">Características</a>
+                    <a href="#instalar" class="hover:text-brand-cyan transition-colors">Cómo Instalar</a>
+                    <a href="#faq" class="hover:text-brand-cyan transition-colors">FAQ</a>
+                </nav>
+
+                <!-- BOTÓN DESCARGA HEADER -->
+                <div class="hidden md:flex items-center gap-4">
+                    <a href="#descargar" class="relative inline-flex items-center justify-center px-6 py-2.5 text-sm font-bold text-slate-900 bg-white rounded-full shadow-lg hover:bg-slate-100 hover:shadow-brand-accent/30 transition-all duration-300 hover:scale-105">
+                        <i class="fa-solid fa-download mr-2 text-brand-primary"></i> Descargar APP
+                    </a>
+                </div>
+
+                <!-- BOTÓN MENU MÓVIL -->
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="p-2 text-slate-300 hover:text-white focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENÚ DESPLEGABLE MÓVIL -->
+        <div id="mobile-menu" class="hidden md:hidden glass-card border-b border-slate-800 px-4 pt-2 pb-6 space-y-3">
+            <a href="#inicio" class="block py-2 text-slate-300 hover:text-white">Inicio</a>
+            <a href="#caracteristicas" class="block py-2 text-slate-300 hover:text-white">Características</a>
+            <a href="#instalar" class="block py-2 text-slate-300 hover:text-white">Cómo Instalar</a>
+            <a href="#faq" class="block py-2 text-slate-300 hover:text-white">FAQ</a>
+            <a href="#descargar" class="block w-full text-center py-3 mt-4 font-bold text-slate-900 bg-white rounded-full shadow-md">
+                <i class="fa-solid fa-download mr-2 text-brand-primary"></i> Descargar APK
+            </a>
+        </div>
+    </header>
+
+    <!-- HERO SECTION -->
+    <section id="inicio" class="relative pt-12 pb-20 md:pt-20 md:pb-32 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-12 gap-12 items-center">
+                
+                <!-- TEXTO HERO -->
+                <div class="lg:col-span-7 text-center lg:text-left space-y-6">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-brand-cyan/30 bg-brand-primary/10 text-brand-cyan text-xs sm:text-sm font-semibold tracking-wide">
+                        <span class="w-2 h-2 rounded-full bg-brand-accent animate-ping"></span>
+                        Versión 1.5 Actualizada · Soporte 4K Ultra HD
+                    </div>
+
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+                        Tu entretenimiento sin límites con <span class="text-gradient-brand">PolTivi</span>
+                    </h1>
+
+                    <p class="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                        El reproductor IPTV de última generación ultra rápido, estable e intuitivo. Organiza tus listas M3U, códigos Xtream y disfruta de una guía EPG moderna en Smart TV, Android Box y Móviles.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">
+                        <a href="#descargar" class="pill-badge px-8 py-4 text-white font-bold text-center text-lg flex items-center justify-center gap-3 transition-transform hover:scale-105 shadow-glow-pill">
+                            <i class="fa-solid fa-circle-down text-xl"></i>
+                            Descargar para Android / TV
+                        </a>
+                    </div>
+
+                    <!-- PLATAFORMAS COMPATIBLES BADGES -->
+                    <div class="pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-slate-400 text-sm">
+                        <span class="text-slate-500 font-medium">Disponible en:</span>
+                        <div class="flex items-center gap-4 text-xl text-slate-300">
+                            <span title="Android / Android TV" class="hover:text-brand-cyan transition-colors"><i class="fa-brands fa-android"></i></span>
+                            <span title="Fire TV Stick" class="hover:text-brand-cyan transition-colors"><i class="fa-solid fa-fire font-bold"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IMAGEN PRINCIPAL (CARRUSEL INTERACTIVO) -->
+                <div class="lg:col-span-5 relative">
+                    <div class="relative mx-auto max-w-[450px] lg:max-w-none">
+                        <div class="absolute -inset-1 bg-gradient-to-r from-brand-primary via-brand-accent to-brand-cyan rounded-3xl blur-2xl opacity-40"></div>
+                        <div class="relative rounded-3xl overflow-hidden border border-slate-700/80 shadow-2xl group cursor-pointer" onclick="openLightbox()" title="Haz clic para ampliar la imagen">
+                            <!-- Imagen del Carrusel -->
+                            <img id="carousel-img" src="images/principal.jpg" alt="PolTivi App Screen" class="w-full h-auto object-cover rounded-3xl transition-opacity duration-300">
+
+                            <!-- Indicadores de puntos -->
+                            <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10" id="carousel-dots">
+                                <!-- Generados dinámicamente por JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- CARACTERÍSTICAS PRINCIPALES -->
+    <section id="caracteristicas" class="py-20 bg-brand-card/30 relative border-y border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                    ¿Por qué elegir <span class="text-gradient-brand">PolTivi Player</span>?
+                </h2>
+                <p class="text-slate-400">Diseñado meticulosamente para ofrecer una velocidad de carga instantánea y la mejor experiencia visual sin interrupciones.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- CARD 1 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Soporte M3U y Xtream</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Carga fácilmente tus listas en formato `.m3u`, `.m3u8` o mediante credenciales Xtream Codes. Escanea el código QR e introduce los datos desde el móvil facilmente.
+                    </p>
+                </div>
+
+                <!-- CARD 2 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-tv"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Guía de Programación EPG</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Navega por una guía interactiva en tiempo real gracias a la Superguía PolTivi integrada. Visualiza qué están transmitiendo, horarios y sinopsis con actualización programada.
+                    </p>
+                </div>
+
+                <!-- CARD 3 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Reproducción 4K sin Lag</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Motor de reproducción acelerado por hardware compatible con decodificación H.265 / HEVC. Transmisión fluida sin congelamientos.
+                    </p>
+                </div>
+
+                <!-- CARD 4 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-heart"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Favoritos y Categorización</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Crea grupos personalizados, guarda tus canales preferidos con un clic y busca por nombre al instante.
+                    </p>
+                </div>
+
+                <!-- CARD 5 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Control Total</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Oculta las categorías que no te interesen y ordénalas a tu gusto.
+                    </p>
+                </div>
+
+                <!-- CARD 6 -->
+                <div class="glass-card p-8 rounded-2xl transition-all duration-300 hover:-translate-y-1">
+                    <div class="w-14 h-14 rounded-2xl pill-badge flex items-center justify-center text-white text-2xl mb-6 shadow-glow-pill">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Soporte Multi-dispositivo</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Optimizado especialmente para uso con control remoto en Smart TV, Firestick, Chromecast con Google TV y dispositivos táctiles.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- GUÍA DE INSTALACIÓN PASO A PASO -->
+    <section id="instalar" class="py-20 bg-brand-card/20 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto space-y-4 mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold">¿Cómo instalar <span class="text-gradient-brand">PolTivi</span> en tu dispositivo?</h2>
+                <p class="text-slate-400">Pocos pasos simples para tener la mejor experiencia de televisión en cuestión de minutos.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- PASO 1 -->
+                <div class="relative glass-card p-8 rounded-2xl space-y-4">
+                    <div class="text-4xl font-black text-brand-cyan/40">01</div>
+                    <h3 class="text-xl font-bold text-white">Descarga la Aplicación</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Descarga el archivo APK directamente desde esta página o mediante la app <span class="text-brand-cyan font-semibold">Downloader</span> en tu Firestick/Android TV introduciendo nuestro código.
+                    </p>
+                </div>
+
+                <!-- PASO 2 -->
+                <div class="relative glass-card p-8 rounded-2xl space-y-4">
+                    <div class="text-4xl font-black text-brand-cyan/40">02</div>
+                    <h3 class="text-xl font-bold text-white">Añade tu Lista M3U o Xtream</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Abre PolTivi ingresa la URL M3U de tu servicio o conéctate con tus credenciales de usuario y contraseña.
+                    </p>
+                </div>
+
+                <!-- PASO 3 -->
+                <div class="relative glass-card p-8 rounded-2xl space-y-4">
+                    <div class="text-4xl font-black text-brand-cyan/40">03</div>
+                    <h3 class="text-xl font-bold text-white">¡A Disfrutar!</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        PolTivi cargará automáticamente las categorías, logotipos de canales y la guía EPG para que comiences a disfrutar inmediatamente.
+                    </p>
+                </div>
+            </div>
+
+            <!-- CÓDIGO DOWNLOADER DIRECTO -->
+            <div class="mt-12 bg-gradient-to-r from-brand-primary/20 via-brand-card to-brand-primary/20 p-6 rounded-2xl border border-brand-cyan/30 text-center max-w-2xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-left">
+                    <h4 class="font-bold text-white text-base">¿Usas Downloader en Fire TV / Android TV?</h4>
+                    <p class="text-slate-400 text-xs">Abre Downloader e introduce el código directo de instalación.</p>
+                </div>
+                <div class="bg-brand-dark px-6 py-3 rounded-xl border border-brand-cyan/40 flex items-center gap-3">
+                    <span class="text-xs text-slate-400">CÓDIGO:</span>
+                    <span class="font-mono font-extrabold text-xl text-brand-accent tracking-widest" id="downloader-code">2947723</span>
+                    <button onclick="copyDownloaderCode()" class="text-slate-400 hover:text-white transition-colors text-sm" title="Copiar Código">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN DE DESCARGA UNIFICADA -->
+    <section id="descargar" class="py-24 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10 space-y-12">
+            <div class="max-w-3xl mx-auto space-y-4">
+                <div class="inline-block">
+                    <img src="logo.png" alt="PolTivi Badge" class="h-16 w-auto mx-auto mb-2" onerror="this.remove()">
+                </div>
+                <h2 class="text-4xl sm:text-5xl font-black tracking-tight">Descarga <span class="text-gradient-brand">PolTivi</span> Gratis</h2>
+                <p class="text-slate-400 text-base sm:text-lg">Aplicación universal optimizada para Smart TV, Fire TV, TV Box, Móviles y Tablets Android.</p>
+            </div>
+
+            <!-- TARJETA ÚNICA UNIFICADA -->
+            <div class="max-w-md mx-auto">
+                <div class="glass-card p-8 rounded-3xl flex flex-col items-center text-center space-y-6 hover:border-brand-cyan/50 transition-all shadow-xl">
+                    <div class="w-20 h-20 rounded-2xl bg-brand-primary/20 text-brand-cyan flex items-center justify-center text-4xl shadow-inner">
+                        <i class="fa-solid fa-download"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-2xl text-white mb-2">PolTivi APK Oficial</h3>
+                        <p class="text-slate-400 text-sm leading-relaxed">
+                            Una sola instalación compatible con todos tus dispositivos Android. Segura, ligera y actualizada.
+                        </p>
+                    </div>
+                    <!-- Enlace de descarga en ventana nueva -->
+                    <a href="https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk" target="_blank" rel="noopener noreferrer" class="w-full pill-badge py-4 text-white font-bold text-base hover:scale-105 transition-transform shadow-glow-pill flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-circle-down"></i> Descargar APK Gratis
+                    </a>
+                    <div class="text-xs text-slate-500 flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-brand-accent"></i> Versión 1.5 • Libre de virus
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECCIÓN PREGUNTAS FRECUENTES (FAQ) -->
+    <section id="faq" class="py-20 bg-brand-card/20 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center space-y-4 mb-12">
+                <h2 class="text-3xl font-extrabold">Preguntas Frecuentes</h2>
+                <p class="text-slate-400 text-sm">Resuelve tus dudas sobre PolTivi.</p>
+            </div>
+
+            <div class="space-y-4">
+                
+                <!-- FAQ 1 -->
+                <div class="glass-card rounded-2xl p-6 cursor-pointer" onclick="toggleFaq(this)">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base text-white">¿PolTivi incluye canales de TV preinstalados?</h3>
+                        <i class="fa-solid fa-chevron-down text-brand-cyan transition-transform duration-300"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-3 hidden leading-relaxed">
+                        No. PolTivi es exclusivamente un reproductor multimedia de alto rendimiento. No suministramos ni distribuimos ningún tipo de contenido o lista de canales. El usuario debe agregar su propia lista M3U o suscripción legal.
+                    </p>
+                </div>
+
+                <!-- FAQ 2 -->
+                <div class="glass-card rounded-2xl p-6 cursor-pointer" onclick="toggleFaq(this)">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base text-white">¿Es compatible con Fire TV Stick de Amazon?</h3>
+                        <i class="fa-solid fa-chevron-down text-brand-cyan transition-transform duration-300"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-3 hidden leading-relaxed">
+                        ¡Sí! PolTivi es totalmente compatible con los dispositivos Fire TV Stick basados en <strong>Fire OS</strong> (generaciones anteriores y clásicas con base Android). *(Nota: Los modelos más recientes que incorporan el nuevo sistema operativo Vega OS basado en Linux no son compatibles).*
+                    </p>
+                </div>
+
+                <!-- FAQ 3 -->
+                <div class="glass-card rounded-2xl p-6 cursor-pointer" onclick="toggleFaq(this)">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base text-white">¿Cómo puedo cargar la guía EPG en la aplicación?</h3>
+                        <i class="fa-solid fa-chevron-down text-brand-cyan transition-transform duration-300"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-3 hidden leading-relaxed">
+                        PolTivi cuenta con una guía integrada. No obstante, puedes elegir si deseas utilizar esta guía integrada por defecto o seleccionar los datos EPG de tu propio proveedor según tus preferencias.
+                    </p>
+                </div>
+
+                <!-- FAQ 4 -->
+                <div class="glass-card rounded-2xl p-6 cursor-pointer" onclick="toggleFaq(this)">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-bold text-base text-white">¿Es gratis PolTivi?</h3>
+                        <i class="fa-solid fa-chevron-down text-brand-cyan transition-transform duration-300"></i>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-3 hidden leading-relaxed">
+                        Sí, PolTivi ofrece una versión gratuita con todas las funciones esenciales para reproducción de listas M3U y EPG. Además, existe una versión Premium con mejoras avanzadas.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- VENTANA FLOTANTE (LIGHTBOX) PARA AMPLIAR IMAGEN -->
+    <div id="lightbox" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4" onclick="closeLightbox()">
+        <button class="absolute top-5 right-5 text-white text-4xl hover:text-brand-cyan transition-colors focus:outline-none" onclick="closeLightbox()">&times;</button>
+        <img id="lightbox-img" src="" alt="Imagen ampliada" class="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" onclick="event.stopPropagation()">
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-brand-dark border-t border-slate-800/80 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                
+                <div class="flex items-center gap-3">
+                    <img src="logo.png" alt="PolTivi" class="h-8 w-auto" onerror="this.remove()">
+                    <span class="text-xs text-slate-500">© 2026 PolTivi. Todos los derechos reservados.</span>
+                </div>
+
+                <div class="flex space-x-6 text-sm text-slate-400">
+                    <a href="#" class="hover:text-brand-cyan transition-colors">Privacidad</a>
+                    <a href="#" class="hover:text-brand-cyan transition-colors">Términos de Uso</a>
+                    <a href="https://t.me/PolTivi" target="_blank" rel="noopener noreferrer" class="hover:text-brand-cyan transition-colors">Soporte Técnico</a>
+                </div>
+
+                <div class="flex space-x-4 text-slate-400 text-lg">
+                    <a href="#" class="hover:text-brand-cyan transition-colors" title="Twitter/X"><i class="fa-brands fa-x-twitter"></i></a>
+                </div>
+
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-900 text-center text-[11px] text-slate-600 leading-relaxed">
+                Descargo de responsabilidad: PolTivi es una aplicación reproductora de medios. No aloja, provee ni vende ningún tipo de contenido audiovisual o listas de canales. Los usuarios son completamente responsables del contenido que carguen en la aplicación.
+            </div>
+        </div>
+    </footer>
+
+    <!-- NOTIFICACIÓN DE MENSAJE TIPO TOAST -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-brand-card border border-brand-cyan/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i class="fa-solid fa-circle-check text-brand-accent text-xl"></i>
+        <span id="toast-msg" class="text-sm font-medium text-white"></span>
+    </div>
+
+    <!-- JAVASCRIPT DE INTERACCIÓN Y CARRUSEL -->
+    <script>
+        // Array con las imágenes en el orden exacto solicitado
+        const carouselImages = [
+            "images/principal.jpg",
+            "images/epg.jpg",
+            "images/gestioncat.jpg",
+            "images/prog.jpg",
+            "images/ajustes.jpg",
+            "images/ajustes2.jpg"
+        ];
+        
+        let currentIndex = 0;
+        let slideInterval;
+
+        // Inicializar carrusel y puntos indicadores
+        function initCarousel() {
+            const dotsContainer = document.getElementById('carousel-dots');
+            if (!dotsContainer) return;
+            dotsContainer.innerHTML = '';
+            
+            carouselImages.forEach((_, index) => {
+                const dot = document.createElement('button');
+                dot.className = `w-2.5 h-2.5 rounded-full transition-all ${index === currentIndex ? 'bg-brand-accent w-6' : 'bg-white/50 hover:bg-white'}`;
+                dot.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    goToSlide(index); 
+                    resetTimer(); 
+                };
+                dotsContainer.appendChild(dot);
+            });
+            startTimer();
+        }
+
+        function goToSlide(index) {
+            currentIndex = index;
+            updateCarousel();
+        }
+
+        function updateCarousel() {
+            const img = document.getElementById('carousel-img');
+            if (img) {
+                img.style.opacity = '0';
+                setTimeout(() => {
+                    img.src = carouselImages[currentIndex];
+                    img.style.opacity = '1';
+                }, 200);
+            }
+            initCarousel();
+        }
+
+        function startTimer() {
+            slideInterval = setInterval(() => {
+                currentIndex = (currentIndex + 1) % carouselImages.length;
+                updateCarousel();
+            }, 4000); // Cambia de imagen automáticamente cada 4 segundos
+        }
+
+        function resetTimer() {
+            clearInterval(slideInterval);
+            startTimer();
+        }
+
+        // Funciones del Lightbox (Zoom al hacer clic)
+        function openLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            lightboxImg.src = carouselImages[currentIndex];
+            lightbox.classList.remove('hidden');
+            clearInterval(slideInterval); // Pausa el carrusel mientras se ve la imagen ampliada
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.add('hidden');
+            startTimer(); // Reanuda el carrusel al cerrar
+        }
+
+        // Menú móvil
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // FAQ Toggle
+        function toggleFaq(element) {
+            const p = element.querySelector('p');
+            const icon = element.querySelector('i');
+            p.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
+
+        // Copiar código de Downloader
+        function copyDownloaderCode() {
+            const code = document.getElementById('downloader-code').innerText.trim();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(code).then(() => {
+                    showToast("Código " + code + " copiado al portapapeles");
+                }).catch(() => {
+                    fallbackCopyText(code);
+                });
+            } else {
+                fallbackCopyText(code);
+            }
+        }
+
+        function fallbackCopyText(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast("Código " + text + " copiado al portapapeles");
+            } catch (err) {
+                showToast("No se pudo copiar el código");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        // Inicializar el carrusel al cargar la página
+        window.addEventListener('DOMContentLoaded', initCarousel);
+    </script>
+</body>
+</html>
