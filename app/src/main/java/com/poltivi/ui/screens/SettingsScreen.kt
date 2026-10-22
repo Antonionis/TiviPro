@@ -648,9 +648,11 @@ fun SettingsScreen(
             )
         }
 
+        var dynamicReleaseNotesInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+
         if (showCurrentReleaseNotes) {
             UpdateDialog(
-                updateInfo = currentReleaseNotesInfo,
+                updateInfo = dynamicReleaseNotesInfo ?: currentReleaseNotesInfo,
                 onDismiss = { showCurrentReleaseNotes = false },
                 isReleaseNotesOnly = true
             )
@@ -704,7 +706,13 @@ fun SettingsScreen(
                             )
 
                             FocusableCard(
-                                onClick = { showCurrentReleaseNotes = true },
+                                onClick = {
+                                    updateScope.launch {
+                                        val notes = com.poltivi.data.network.UpdateManager.fetchCurrentReleaseNotes(updateContext)
+                                        dynamicReleaseNotesInfo = notes
+                                        showCurrentReleaseNotes = true
+                                    }
+                                },
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Box(

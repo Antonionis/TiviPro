@@ -22,7 +22,7 @@ data class UpdateInfo(
 
 object UpdateManager {
 
-    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/poltivi/poltivi/releases/latest"
+    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/Antonionis/PolTivi/releases/latest"
 
     private fun isVersionGreater(serverVer: String, currentVer: String): Boolean {
         val sParts = serverVer.split(".").mapNotNull { it.toIntOrNull() }
@@ -140,6 +140,89 @@ object UpdateManager {
         } catch (_: Exception) {}
 
         UpdateInfo(false, currentVersionCode, currentVersionName, "", "")
+    }
+
+    suspend fun fetchCurrentReleaseNotes(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
+        val client = NetworkModule.getOkHttpClient()
+
+        val currentVersionName = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "1.5"
+        } catch (_: Exception) {
+            "1.5"
+        }
+
+        val currentVersionCode = try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode
+            }
+        } catch (_: Exception) {
+            5
+        }
+
+        try {
+            val request = Request.Builder()
+                .url(GITHUB_RELEASES_API_URL)
+                .header("User-Agent", "PolTivi-App")
+                .header("Accept", "application/vnd.github+json")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
+                    val changelog = json.optString("body", "")
+
+                    if (changelog.isNotBlank()) {
+                        return@withContext UpdateInfo(
+                            isUpdateAvailable = false,
+                            versionCode = currentVersionCode,
+                            versionName = if (tagName.isNotBlank()) tagName else currentVersionName,
+                            apkUrl = "",
+                            changelog = changelog
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        try {
+            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/PolTivi/main/version.json"
+            val request = Request.Builder()
+                .url(fallbackUrl)
+                .header("User-Agent", "PolTivi-App")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val serverVersionName = json.optString("versionName", currentVersionName)
+                    val changelog = json.optString("changelog", "")
+
+                    if (changelog.isNotBlank()) {
+                        return@withContext UpdateInfo(
+                            isUpdateAvailable = false,
+                            versionCode = currentVersionCode,
+                            versionName = serverVersionName,
+                            apkUrl = "",
+                            changelog = changelog
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        UpdateInfo(false, currentVersionCode, currentVersionName, "", "• PolTivi v$currentVersionName Versión Oficial\n• Novedades disponibles en GitHub.")
     }
 
     suspend fun downloadAndInstallApk(

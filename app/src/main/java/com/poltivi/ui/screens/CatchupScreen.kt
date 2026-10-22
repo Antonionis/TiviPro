@@ -96,14 +96,12 @@ fun CatchupScreen(
     LaunchedEffect(Unit) {
         isLoading = true
         try {
-            // Ensure provider EpgSourceMode is active for provider Catch-up
-            repository.setEpgSourceMode(EpgSourceMode.PROVIDER)
             val catchupChs = repository.getCatchupChannels()
             channels = catchupChs
             val firstCh = catchupChs.firstOrNull()
             selectedChannel = firstCh
             if (firstCh != null) {
-                epgPrograms = repository.getEpgForChannel(firstCh.id, firstCh.epgId)
+                epgPrograms = repository.getEpgForChannel(firstCh.id, firstCh.epgId, forceProvider = true)
             }
         } catch (_: Exception) {
         } finally {
@@ -115,7 +113,7 @@ fun CatchupScreen(
         selectedChannel = ch
         scope.launch {
             try {
-                epgPrograms = repository.getEpgForChannel(ch.id, ch.epgId)
+                epgPrograms = repository.getEpgForChannel(ch.id, ch.epgId, forceProvider = true)
             } catch (_: Exception) {}
         }
     }

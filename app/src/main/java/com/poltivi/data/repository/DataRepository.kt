@@ -73,7 +73,7 @@ interface DataRepository {
     suspend fun getSeriesCategories(): List<Category>
     suspend fun getSeriesList(categoryId: String? = null): List<Series>
     suspend fun getSeriesEpisodes(seriesId: String): List<Episode>
-    suspend fun getEpgForChannel(channelId: String, streamId: String? = null): List<EpgProgram>
+    suspend fun getEpgForChannel(channelId: String, streamId: String? = null, forceProvider: Boolean = false): List<EpgProgram>
     suspend fun getSportsEvents(): List<SportsEvent>
 
     fun searchContent(query: String): SearchResult
@@ -850,8 +850,8 @@ class DataRepositoryImpl(
         return t.contains(x) || x.contains(t)
     }
 
-    override suspend fun getEpgForChannel(channelId: String, streamId: String?): List<EpgProgram> = withContext(Dispatchers.IO) {
-        if (_epgSourceMode.value == EpgSourceMode.PROVIDER) {
+    override suspend fun getEpgForChannel(channelId: String, streamId: String?, forceProvider: Boolean): List<EpgProgram> = withContext(Dispatchers.IO) {
+        if (forceProvider || _epgSourceMode.value == EpgSourceMode.PROVIDER) {
             if (_activeMode.value == DataSourceMode.XTREAM) {
                 if (xtreamLiveChannels.isEmpty()) {
                     getLiveChannels()
