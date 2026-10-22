@@ -242,8 +242,8 @@ object DeviceManager {
 
             val currentVersion = try {
                 val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-                pInfo.versionName ?: "1.5"
-            } catch (_: Exception) { "1.5" }
+                pInfo.versionName ?: "1.6"
+            } catch (_: Exception) { "1.6" }
 
             val jsonBody = JSONObject().apply {
                 put("device_id", deviceId)

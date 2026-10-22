@@ -632,19 +632,19 @@ fun SettingsScreen(
         val appVersionName = remember {
             try {
                 val pInfo = updateContext.packageManager.getPackageInfo(updateContext.packageName, 0)
-                pInfo.versionName ?: "1.5"
+                pInfo.versionName ?: "1.6"
             } catch (_: Exception) {
-                "1.5"
+                "1.6"
             }
         }
 
         val currentReleaseNotesInfo = remember(appVersionName) {
             UpdateInfo(
                 isUpdateAvailable = false,
-                versionCode = 5,
+                versionCode = 6,
                 versionName = appVersionName,
                 apkUrl = "",
-                changelog = "• PolTivi v$appVersionName Versión Oficial\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+                changelog = "• PolTivi v$appVersionName Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG PolTivi (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
             )
         }
 

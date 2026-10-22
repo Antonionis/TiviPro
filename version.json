@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "1.5",
-  "download_url": "https://github.com/Antonionis/PolTivi/releases/download/v1.5/poltivi.apk",
-  "changelog": "• PolTivi v1.5 Versión Oficial\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+  "versionCode": 6,
+  "versionName": "1.6",
+  "download_url": "https://github.com/Antonionis/PolTivi/releases/download/v1.6/poltivi.apk",
+  "changelog": "• PolTivi v1.6 Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG PolTivi (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
 }

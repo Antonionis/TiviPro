@@ -131,7 +131,7 @@ object UpdateManager {
                     return@withContext UpdateInfo(
                         isUpdateAvailable = isAvailable,
                         versionCode = currentVersionCode + 1,
-                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.5",
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.6",
                         apkUrl = apkUrl,
                         changelog = changelog
                     )
@@ -147,9 +147,9 @@ object UpdateManager {
 
         val currentVersionName = try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.5"
+            pInfo.versionName ?: "1.6"
         } catch (_: Exception) {
-            "1.5"
+            "1.6"
         }
 
         val currentVersionCode = try {
@@ -161,7 +161,7 @@ object UpdateManager {
                 pInfo.versionCode
             }
         } catch (_: Exception) {
-            5
+            6
         }
 
         try {
