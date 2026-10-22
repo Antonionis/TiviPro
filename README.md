@@ -71,7 +71,7 @@
 
 Puedes descargar la última versión compilada lista para instalar en tu Smart TV o teléfono móvil desde la sección de Releases:
 
-👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/poltivi/poltivi/releases/latest)**
+👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk)**
 
 ---
 
