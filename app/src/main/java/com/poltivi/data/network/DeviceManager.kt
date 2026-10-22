@@ -94,6 +94,14 @@ object DeviceManager {
         val prefsDevice = context.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)
         val prefsSession = context.getSharedPreferences("poltivi_session", Context.MODE_PRIVATE)
 
+        val trialDurationMs = 72 * 3600 * 1000L
+        var firstInstallMs = prefsDevice.getLong("first_install_timestamp_ms", 0L)
+        if (firstInstallMs == 0L) {
+            firstInstallMs = System.currentTimeMillis()
+            prefsDevice.edit().putLong("first_install_timestamp_ms", firstInstallMs).apply()
+        }
+        val isWithinTrial = (System.currentTimeMillis() - firstInstallMs) < trialDurationMs
+
         val urls = listOf(
             "http://$MANAGEMENT_SERVER_IP/poltivi/api.php",
             "http://$MANAGEMENT_SERVER_IP/admin/api.php",
@@ -137,15 +145,16 @@ object DeviceManager {
                         val jsonStr = responseText.substring(firstBrace, lastBrace + 1)
                         val json = JSONObject(jsonStr)
 
-                        val isPremium = parseJsonBoolean(json, "es_premium", "premium", "is_premium", "esPremium", "status")
+                        val serverIsPremium = parseJsonBoolean(json, "es_premium", "premium", "is_premium", "esPremium", "status")
                         val isBlocked = parseJsonBoolean(json, "bloqueado", "blocked", "is_blocked", "isBlocked", "banned")
+                        val effectiveIsPremium = serverIsPremium || isWithinTrial
 
-                        prefsDevice.edit().putBoolean("is_premium", isPremium).apply()
-                        prefsSession.edit().putBoolean("is_premium", isPremium).apply()
+                        prefsDevice.edit().putBoolean("is_premium", effectiveIsPremium).apply()
+                        prefsSession.edit().putBoolean("is_premium", effectiveIsPremium).apply()
 
                         return@withContext DeviceLicenseStatus(
                             isBlocked = isBlocked,
-                            isPremium = isPremium,
+                            isPremium = effectiveIsPremium,
                             deviceId = deviceId
                         )
                     }
@@ -155,8 +164,7 @@ object DeviceManager {
             }
         }
 
-        // Si la consulta falla por conexión/error, recuperamos el estado premium guardado
-        val savedPremium = prefsDevice.getBoolean("is_premium", false) || prefsSession.getBoolean("is_premium", false)
+        val savedPremium = prefsDevice.getBoolean("is_premium", false) || prefsSession.getBoolean("is_premium", false) || isWithinTrial
         DeviceLicenseStatus(isBlocked = false, isPremium = savedPremium, deviceId = deviceId)
     }
 

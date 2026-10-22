@@ -168,9 +168,21 @@ class DataRepositoryImpl(
         prefs?.edit()?.putString("epg_source_mode", mode.name)?.apply()
     }
 
+    private fun isTrialActive(context: Context?): Boolean {
+        if (context == null) return false
+        val prefsDev = context.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)
+        var installMs = prefsDev.getLong("first_install_timestamp_ms", 0L)
+        if (installMs == 0L) {
+            installMs = System.currentTimeMillis()
+            prefsDev.edit().putLong("first_install_timestamp_ms", installMs).apply()
+        }
+        return (System.currentTimeMillis() - installMs) < (72 * 3600 * 1000L)
+    }
+
     private val _isPremium = MutableStateFlow<Boolean>(
         prefs?.getBoolean("is_premium", false) == true ||
-        appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.getBoolean("is_premium", false) == true
+        appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.getBoolean("is_premium", false) == true ||
+        isTrialActive(appContext)
     )
     override val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
 
