@@ -1,6 +1,7 @@
 ﻿package com.tivipro.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.ui.text.style.TextAlign
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -210,16 +211,32 @@ fun LoginScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    var btn1Focus by remember { mutableStateOf(false) }
                                     Button(
                                         onClick = onLoginSuccess,
-                                        modifier = Modifier.weight(1.2f),
+                                        modifier = Modifier
+                                            .weight(1.2f)
+                                            .onFocusChanged { btn1Focus = it.isFocused }
+                                            .border(
+                                                width = if (btn1Focus) 2.dp else 0.dp,
+                                                color = if (btn1Focus) Color(0xFF00D2FF) else Color.Transparent,
+                                                shape = ButtonDefaults.shape
+                                            ),
                                         colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
                                     ) {
                                         Text("ABRIR PANEL PRINCIPAL", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
 
+                                    var btn2Focus by remember { mutableStateOf(false) }
                                     Button(
                                         onClick = { showSwitchPlaylistDialog = true },
+                                        modifier = Modifier
+                                            .onFocusChanged { btn2Focus = it.isFocused }
+                                            .border(
+                                                width = if (btn2Focus) 2.dp else 0.dp,
+                                                color = if (btn2Focus) Color(0xFF00D2FF) else Color.Transparent,
+                                                shape = ButtonDefaults.shape
+                                            ),
                                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2A2A40))
                                     ) {
                                         Icon(
@@ -231,8 +248,16 @@ fun LoginScreen(
                                         Text("CAMBIAR DE LISTA", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color.White)
                                     }
 
+                                    var btn3Focus by remember { mutableStateOf(false) }
                                     Button(
                                         onClick = { viewModel.logout() },
+                                        modifier = Modifier
+                                            .onFocusChanged { btn3Focus = it.isFocused }
+                                            .border(
+                                                width = if (btn3Focus) 2.dp else 0.dp,
+                                                color = if (btn3Focus) Color(0xFF00D2FF) else Color.Transparent,
+                                                shape = ButtonDefaults.shape
+                                            ),
                                         colors = ButtonDefaults.buttonColors(containerColor = StatusError)
                                     ) {
                                         Icon(

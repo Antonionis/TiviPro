@@ -108,6 +108,17 @@ fun SettingsScreen(
         try {
             val status = com.tivipro.data.network.DeviceManager.verificarDispositivo(context)
             viewModel.repository.setPremiumStatus(status.isPremium)
+            if (!status.isPremium) {
+                val playlists = viewModel.repository.getSavedPlaylists()
+                val active = playlists.firstOrNull { it.isActive }
+                if (active != null) {
+                    playlists.forEach {
+                        if (it.id != active.id) {
+                            viewModel.repository.deletePlaylist(it.id)
+                        }
+                    }
+                }
+            }
             categories = viewModel.repository.getAllLiveCategories()
             hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
         } catch (_: Exception) {}

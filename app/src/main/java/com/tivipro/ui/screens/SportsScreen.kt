@@ -37,6 +37,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,9 +76,11 @@ fun SportsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var isPremium by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         val status = DeviceManager.verificarDispositivo(context)
+        isPremium = status.isPremium
         viewModel.repository.setPremiumStatus(status.isPremium)
         viewModel.loadSportsEvents()
     }
@@ -90,13 +94,13 @@ fun SportsScreen(
                     val keyCode = event.nativeKeyEvent.keyCode
                     val isLeft = event.key == Key.DirectionLeft || keyCode == 21
                     val isRight = event.key == Key.DirectionRight || keyCode == 22
-                    if (isLeft) {
+                    if (isLeft && isPremium) {
                         when (uiState.selectedDateTab) {
                             "Mañana" -> viewModel.selectDateTab("Hoy")
                             "Pasado Mañana" -> viewModel.selectDateTab("Mañana")
                         }
                         true
-                    } else if (isRight) {
+                    } else if (isRight && isPremium) {
                         when (uiState.selectedDateTab) {
                             "Hoy" -> viewModel.selectDateTab("Mañana")
                             "Mañana" -> viewModel.selectDateTab("Pasado Mañana")
@@ -184,12 +188,18 @@ fun SportsScreen(
             val tomorrowDateTitle = remember(secondDateStr) { getTabFormattedTitleForDate(secondDateStr, 1) }
             val pasadoDateTitle = remember(thirdDateStr) { getTabFormattedTitleForDate(thirdDateStr, 2) }
 
-            val dateTabs = remember(todayDateTitle, tomorrowDateTitle, pasadoDateTitle) {
-                listOf(
-                    "Hoy" to todayDateTitle,
-                    "Mañana" to tomorrowDateTitle,
-                    "Pasado Mañana" to pasadoDateTitle
-                )
+            val dateTabs = remember(todayDateTitle, tomorrowDateTitle, pasadoDateTitle, isPremium) {
+                if (isPremium) {
+                    listOf(
+                        "Hoy" to todayDateTitle,
+                        "Mañana" to tomorrowDateTitle,
+                        "Pasado Mañana" to pasadoDateTitle
+                    )
+                } else {
+                    listOf(
+                        "Hoy" to todayDateTitle
+                    )
+                }
             }
 
             // DATE TABS: HOY FECHA, DÍA_SEMANA FECHA 1, DÍA_SEMANA FECHA 2

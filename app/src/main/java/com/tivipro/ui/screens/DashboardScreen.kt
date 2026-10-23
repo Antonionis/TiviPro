@@ -201,7 +201,7 @@ fun DashboardScreen(
                             Color(0xFF4364F7),
                             Color(0xFF1D2671)
                         ),
-                        imageUrl = R.drawable.logo,
+                        imageUrl = R.drawable.tv,
                         isCompact = isCompactWidth || isCompactHeight,
                         onClick = { viewModel.navigateTo(AppScreen.LIVE_TV) },
                         modifier = Modifier
@@ -220,7 +220,7 @@ fun DashboardScreen(
                             Color(0xFF6A1B9A),
                             Color(0xFF4A148C)
                         ),
-                        imageUrl = R.drawable.logo,
+                        imageUrl = R.drawable.cine,
                         isCompact = isCompactWidth || isCompactHeight,
                         onClick = { viewModel.navigateTo(AppScreen.MOVIES) },
                         modifier = Modifier
@@ -239,7 +239,7 @@ fun DashboardScreen(
                             Color(0xFF0072FF),
                             Color(0xFF003B99)
                         ),
-                        imageUrl = R.drawable.logo,
+                        imageUrl = R.drawable.series,
                         isCompact = isCompactWidth || isCompactHeight,
                         onClick = { viewModel.navigateTo(AppScreen.SERIES) },
                         modifier = Modifier
