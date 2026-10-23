@@ -174,7 +174,7 @@ object DeviceManager {
      */
     suspend fun pollQrLoginCredentials(context: Context): QrCredentialsResult? = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
-        val urlApi = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=pol_tivi"
+        val urlApi = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=tivipro"
 
         try {
             val client = NetworkModule.getOkHttpClient()
