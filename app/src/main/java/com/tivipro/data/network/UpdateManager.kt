@@ -222,7 +222,13 @@ object UpdateManager {
             }
         } catch (_: Exception) {}
 
-        UpdateInfo(false, currentVersionCode, currentVersionName, "", "• TiviPro v$currentVersionName Versión Oficial\n• Novedades disponibles en GitHub.")
+        UpdateInfo(
+            false,
+            currentVersionCode,
+            currentVersionName,
+            "",
+            "🚀 TiviPro v1.6\n\n✨ Novedades y Características Principales\n\nFuncionalidad Multiview (pantalla dividida), posibilidad seguir dos transmisiones en directo de forma simultánea pudiendo elegir el audio de cada una.\nGestión de Listas y Conectividad: Soporte completo y optimizado para listas M3U / M3U8 y credenciales Xtream Codes, con opción de configuración rápida y sencilla mediante códigos QR.\nGuía EPG Integrada: Incorporación de una superguía de programación interactiva en tiempo real, con opciones flexibles de visualización y compatibilidad con proveedores externos.\n\n📦 Compatibilidad mejorada: Optimizado para Android, Android TV, TV Box y Fire TV Stick (Fire OS)."
+        )
     }
 
     suspend fun downloadAndInstallApk(
