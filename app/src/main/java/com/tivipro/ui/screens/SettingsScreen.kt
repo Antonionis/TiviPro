@@ -679,7 +679,7 @@ fun SettingsScreen(
                     ) {
                         if (isPremium) {
                             androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = com.tivipro.R.drawable.sello),
+                                painter = androidx.compose.ui.res.painterResource(id = com.tivipro.R.drawable.logo),
                                 contentDescription = "Sello Premium",
                                 modifier = Modifier.size(44.dp)
                             )

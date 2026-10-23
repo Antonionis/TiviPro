@@ -305,8 +305,8 @@ fun SeriesCard(
                     model = series.posterUrl,
                     contentDescription = series.name,
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.series),
-                    placeholder = painterResource(id = R.drawable.series),
+                    error = painterResource(id = R.drawable.logo),
+                    placeholder = painterResource(id = R.drawable.logo),
                     modifier = Modifier
                         .fillMaxSize()
                         .background(SurfaceDarkCard)

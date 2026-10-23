@@ -355,8 +355,8 @@ fun MoviePosterCard(
                     model = movie.posterUrl,
                     contentDescription = movie.name,
                     contentScale = ContentScale.Crop,
-                    error = painterResource(id = R.drawable.cine),
-                    placeholder = painterResource(id = R.drawable.cine),
+                    error = painterResource(id = R.drawable.logo),
+                    placeholder = painterResource(id = R.drawable.logo),
                     modifier = Modifier
                         .fillMaxSize()
                         .background(SurfaceDarkCard)
