@@ -4,6 +4,7 @@ import com.tivipro.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -308,32 +309,28 @@ fun StarRatingBar(
     starColor: Color = GoldAccent,
     showNumericRating: Boolean = true
 ) {
-    val score = rating?.toFloat() ?: 0f
-    val filledCount = if (score > 5f) (score / 2f).roundToInt().coerceIn(1, 5) else score.roundToInt().coerceIn(1, 5)
+    if (rating == null || rating <= 0.0) return
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
     ) {
-        for (i in 1..5) {
-            Icon(
-                imageVector = Icons.Rounded.Star,
-                contentDescription = null,
-                tint = if (i <= filledCount) starColor else Color.Gray.copy(alpha = 0.4f),
-                modifier = Modifier.size(starSize)
-            )
-        }
-
-        if (showNumericRating && rating != null && rating > 0.0) {
-            Spacer(modifier = Modifier.width(3.dp))
-            Text(
-                text = String.format(Locale.US, "%.1f", rating),
-                color = starColor,
-                fontSize = (starSize.value + 1).sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
+        Icon(
+            imageVector = Icons.Rounded.Star,
+            contentDescription = null,
+            tint = starColor,
+            modifier = Modifier.size(starSize)
+        )
+        Spacer(modifier = Modifier.width(2.dp))
+        Text(
+            text = String.format(Locale.US, "%.1f", rating),
+            color = starColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false
+        )
     }
 }
 
@@ -347,7 +344,7 @@ fun MoviePosterCard(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(145.dp),
+            .aspectRatio(0.68f),
         shape = RoundedCornerShape(8.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
