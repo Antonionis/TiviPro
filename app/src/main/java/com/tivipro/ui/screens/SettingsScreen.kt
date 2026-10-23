@@ -1214,6 +1214,12 @@ fun AddPlaylistDialog(
                 val m3uTabFocus = remember { FocusRequester() }
                 val qrTabFocus = remember { FocusRequester() }
 
+                LaunchedEffect(Unit) {
+                    try {
+                        xtreamTabFocus.requestFocus()
+                    } catch (_: Exception) {}
+                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FocusableCard(
                         onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
