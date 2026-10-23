@@ -159,7 +159,7 @@ class DataRepositoryImpl(
     }
 
     private val _epgSourceMode = MutableStateFlow<EpgSourceMode>(
-        if (prefs?.getString("epg_source_mode", "TIVIPRO") == "PROVIDER") EpgSourceMode.PROVIDER else EpgSourceMode.TIVIPRO
+        if (prefs?.getString("epg_source_mode", "PROVIDER") == "TIVIPRO") EpgSourceMode.TIVIPRO else EpgSourceMode.PROVIDER
     )
     override val epgSourceMode: StateFlow<EpgSourceMode> = _epgSourceMode.asStateFlow()
 
