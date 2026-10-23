@@ -877,21 +877,20 @@ class DataRepositoryImpl(
                     val result = xtreamRepository.getShortEpg(acc.serverUrl, acc.username, acc.password, sId, limit = 10)
                     if (result.isSuccess) {
                         val providerProgs = result.getOrDefault(emptyList())
-                        if (providerProgs.isNotEmpty()) {
-                            val nowSec = System.currentTimeMillis() / 1000L
-                            return@withContext providerProgs.map { p ->
-                                val live = nowSec in p.startTimestamp..p.endTimestamp
-                                val catchup = if (targetChannel != null && targetChannel.tvArchive == 1 && p.endTimestamp < nowSec) {
-                                    val durationMins = ((p.endTimestamp - p.startTimestamp) / 60L).coerceAtLeast(1L)
-                                    xtreamRepository.buildCatchupStreamUrl(acc.serverUrl, acc.username, acc.password, targetChannel.id, p.startTimestamp, durationMins)
-                                } else null
+                        val nowSec = System.currentTimeMillis() / 1000L
+                        return@withContext providerProgs.map { p ->
+                            val live = nowSec in p.startTimestamp..p.endTimestamp
+                            val catchup = if (targetChannel != null && targetChannel.tvArchive == 1 && p.endTimestamp < nowSec) {
+                                val durationMins = ((p.endTimestamp - p.startTimestamp) / 60L).coerceAtLeast(1L)
+                                xtreamRepository.buildCatchupStreamUrl(acc.serverUrl, acc.username, acc.password, targetChannel.id, p.startTimestamp, durationMins)
+                            } else null
 
-                                p.copy(isLive = live, catchupUrl = catchup)
-                            }.sortedBy { it.startTimestamp }
-                        }
+                            p.copy(isLive = live, catchupUrl = catchup)
+                        }.sortedBy { it.startTimestamp }
                     }
                 }
             }
+            return@withContext emptyList()
         }
 
         // Default or Fallback: TiviPro EPG (External DobleM EPG)
