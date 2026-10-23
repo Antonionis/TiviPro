@@ -85,6 +85,7 @@ fun MoviesScreen(
     val firstMovieFocusRequester = remember { FocusRequester() }
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     var hasFocusedForCategory by remember(uiState.selectedVodCategory, uiState.isMovieFavoritesSelected, uiState.searchQuery) { mutableStateOf(false) }
+    var focusedMovieId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(filteredMovies, uiState.selectedVodCategory, uiState.isMovieFavoritesSelected, uiState.searchQuery) {
         if (!hasFocusedForCategory && filteredMovies.isNotEmpty()) {
@@ -278,7 +279,12 @@ fun MoviesScreen(
                     itemsIndexed(filteredMovies, key = { _, m -> m.id }) { index, movie ->
                         MoviePosterCard(
                             movie = movie,
-                            onClick = { viewModel.selectMovie(movie) },
+                            onClick = {
+                                focusedMovieId = movie.id
+                                viewModel.selectMovie(movie)
+                            },
+                            isRecentlyClosedDetail = (uiState.selectedMovie == null && movie.id == focusedMovieId),
+                            onFocusRestored = { focusedMovieId = null },
                             modifier = Modifier
                                 .focusProperties {
                                     if (index == 0) {
@@ -345,13 +351,27 @@ fun StarRatingBar(
 fun MoviePosterCard(
     movie: VodMovie,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRecentlyClosedDetail: Boolean = false,
+    onFocusRestored: () -> Unit = {}
 ) {
+    val cardFocusRequester = remember(movie.id) { FocusRequester() }
+
+    LaunchedEffect(isRecentlyClosedDetail) {
+        if (isRecentlyClosedDetail) {
+            try {
+                cardFocusRequester.requestFocus()
+                onFocusRestored()
+            } catch (_: Exception) {}
+        }
+    }
+
     FocusableCard(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.68f),
+            .aspectRatio(0.68f)
+            .focusRequester(cardFocusRequester),
         shape = RoundedCornerShape(8.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {

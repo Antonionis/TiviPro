@@ -85,6 +85,7 @@ fun SeriesScreen(
     val firstSeriesFocusRequester = remember { FocusRequester() }
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     var hasFocusedForCategory by remember(uiState.selectedSeriesCategory, uiState.isSeriesFavoritesSelected) { mutableStateOf(false) }
+    var focusedSeriesId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.seriesList, uiState.selectedSeriesCategory, uiState.isSeriesFavoritesSelected) {
         if (!hasFocusedForCategory && uiState.seriesList.isNotEmpty()) {
@@ -280,7 +281,12 @@ fun SeriesScreen(
                     itemsIndexed(uiState.seriesList, key = { _, s -> s.id }) { index, series ->
                         SeriesCard(
                             series = series,
-                            onClick = { viewModel.selectSeries(series) },
+                            onClick = {
+                                focusedSeriesId = series.id
+                                viewModel.selectSeries(series)
+                            },
+                            isRecentlyClosedDetail = (uiState.selectedSeries == null && series.id == focusedSeriesId),
+                            onFocusRestored = { focusedSeriesId = null },
                             modifier = Modifier
                                 .focusProperties {
                                     if (index == 0) {
@@ -300,13 +306,27 @@ fun SeriesScreen(
 fun SeriesCard(
     series: Series,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRecentlyClosedDetail: Boolean = false,
+    onFocusRestored: () -> Unit = {}
 ) {
+    val cardFocusRequester = remember(series.id) { FocusRequester() }
+
+    LaunchedEffect(isRecentlyClosedDetail) {
+        if (isRecentlyClosedDetail) {
+            try {
+                cardFocusRequester.requestFocus()
+                onFocusRestored()
+            } catch (_: Exception) {}
+        }
+    }
+
     FocusableCard(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(0.68f),
+            .aspectRatio(0.68f)
+            .focusRequester(cardFocusRequester),
         shape = RoundedCornerShape(12.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
