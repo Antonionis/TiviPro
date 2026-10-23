@@ -677,25 +677,18 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (isPremium) {
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = com.tivipro.R.drawable.logo),
-                                contentDescription = "Sello Premium",
-                                modifier = Modifier.size(44.dp)
-                            )
-                        }
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(
+                                id = if (isPremium) com.tivipro.R.drawable.logoprem else com.tivipro.R.drawable.logo
+                            ),
+                            contentDescription = if (isPremium) "Logo Premium" else "Logo TiviPro",
+                            modifier = Modifier.size(44.dp)
+                        )
 
                         Column(
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(
-                                text = "ID: $deviceId",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = OrangeGlow
-                            )
-
                             FocusableCard(
                                 onClick = {
                                     updateScope.launch {
@@ -719,6 +712,13 @@ fun SettingsScreen(
                                     )
                                 }
                             }
+                            
+                            Text(
+                                text = "ID: $deviceId",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = OrangeGlow
+                            )
                         }
                     }
                 }

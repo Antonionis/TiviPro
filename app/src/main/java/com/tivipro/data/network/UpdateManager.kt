@@ -63,7 +63,7 @@ object UpdateManager {
         try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
@@ -113,7 +113,7 @@ object UpdateManager {
             val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
             val request = Request.Builder()
                 .url(fallbackUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
@@ -167,7 +167,7 @@ object UpdateManager {
         try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
@@ -197,7 +197,7 @@ object UpdateManager {
             val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
             val request = Request.Builder()
                 .url(fallbackUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
@@ -235,7 +235,7 @@ object UpdateManager {
 
             val request = Request.Builder()
                 .url(apkUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "*/*")
                 .build()
 
