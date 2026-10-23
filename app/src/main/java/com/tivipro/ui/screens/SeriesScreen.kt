@@ -114,6 +114,7 @@ fun SeriesScreen(
     ) {
         val screenWidth = maxWidth
         val isCompactWidth = screenWidth < 600.dp
+        val isMobile = maxHeight < 450.dp || screenWidth < 600.dp
         val horizontalPadding = if (isCompactWidth) 14.dp else 28.dp
         val verticalPadding = if (maxHeight < 500.dp) 8.dp else 16.dp
 
@@ -261,7 +262,7 @@ fun SeriesScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 110.dp),
+                    columns = GridCells.Adaptive(minSize = if (isMobile) 75.dp else 110.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
