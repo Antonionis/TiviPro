@@ -22,7 +22,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "poltivi"
+rootProject.name = "tivipro"
 include(":app")
 include(":app")
  

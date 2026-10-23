@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.poltivi"
+    namespace = "com.tivipro"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.poltivi"
+        applicationId = "com.tivipro"
         minSdk = 24
         targetSdk = 37
         versionCode = 6
@@ -27,7 +27,7 @@ android {
 
     signingConfigs {
         create("release") {
-            val ksFile = rootProject.file("keystore/poltivi_release.jks")
+            val ksFile = rootProject.file("keystore/tivipro_release.jks")
             if (ksFile.exists()) {
                 storeFile = ksFile
                 storePassword = "goaltv123"
@@ -43,7 +43,7 @@ android {
 
     buildTypes {
         release {
-            val ksFile = rootProject.file("keystore/poltivi_release.jks")
+            val ksFile = rootProject.file("keystore/tivipro_release.jks")
             if (ksFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -55,7 +55,7 @@ android {
             )
         }
         debug {
-            val ksFile = rootProject.file("keystore/poltivi_release.jks")
+            val ksFile = rootProject.file("keystore/tivipro_release.jks")
             if (ksFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -104,7 +104,7 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            output.outputFileName.set("poltivi.apk")
+            output.outputFileName.set("tivipro.apk")
         }
     }
 }
@@ -184,8 +184,8 @@ abstract class CopyApkTask : DefaultTask() {
 
 val copyDebugApk = tasks.register<CopyApkTask>("copyDebugApk") {
     dependsOn(tasks.matching { it.name == "assembleDebug" })
-    inputFile.set(layout.buildDirectory.file("outputs/apk/debug/poltivi.apk"))
-    outputFile.set(layout.projectDirectory.file("../poltivi.apk"))
+    inputFile.set(layout.buildDirectory.file("outputs/apk/debug/tivipro.apk"))
+    outputFile.set(layout.projectDirectory.file("../tivipro.apk"))
 }
 
 tasks.matching { it.name == "assembleDebug" }.configureEach {

@@ -1,8 +1,8 @@
 # R8 / ProGuard Optimization Rules for PolTivi
 
 # Keep Application, Activities & Android Components
--keep public class com.poltivi.PolTiviApplication { *; }
--keep public class com.poltivi.MainActivity { *; }
+-keep public class com.tivipro.PolTiviApplication { *; }
+-keep public class com.tivipro.MainActivity { *; }
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.Service
@@ -13,10 +13,10 @@
 -keep public class * extends androidx.lifecycle.ViewModel { *; }
 
 # Keep all Data Models and Network DTOs
--keep class com.poltivi.model.** { *; }
--keepclassmembers class com.poltivi.model.** { *; }
--keep class com.poltivi.data.** { *; }
--keepclassmembers class com.poltivi.data.** { *; }
+-keep class com.tivipro.model.** { *; }
+-keepclassmembers class com.tivipro.model.** { *; }
+-keep class com.tivipro.data.** { *; }
+-keepclassmembers class com.tivipro.data.** { *; }
 
 # Moshi & Retrofit
 -keep class com.squareup.moshi.** { *; }
