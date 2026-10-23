@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import com.tivipro.R
 
 @Composable
-fun PolTiviLogo(
+fun TiviProLogo(
     modifier: Modifier = Modifier,
     sizeScale: Float = 1.0f,
     showGlow: Boolean = true
@@ -19,7 +19,7 @@ fun PolTiviLogo(
 
     Image(
         painter = painterResource(id = R.drawable.logo),
-        contentDescription = "PolTivi Logo",
+        contentDescription = "TiviPro Logo",
         contentScale = ContentScale.Fit,
         modifier = modifier.height(logoHeight)
     )

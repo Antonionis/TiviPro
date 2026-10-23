@@ -30,7 +30,7 @@ import com.tivipro.ui.screens.SeriesScreen
 import com.tivipro.ui.screens.SettingsScreen
 import com.tivipro.ui.screens.SportsScreen
 import com.tivipro.ui.theme.DarkBackground
-import com.tivipro.ui.theme.PolTiviTheme
+import com.tivipro.ui.theme.TiviProTheme
 import com.tivipro.ui.viewmodel.AppScreen
 import com.tivipro.ui.viewmodel.AuthViewModel
 import com.tivipro.ui.viewmodel.LiveTvViewModel
@@ -39,10 +39,10 @@ import com.tivipro.ui.viewmodel.SportsViewModel
 import com.tivipro.ui.viewmodel.VodViewModel
 
 @Composable
-fun PolTiviApp(
+fun TiviProApp(
     modifier: Modifier = Modifier
 ) {
-    PolTiviTheme {
+    TiviProTheme {
         val context = LocalContext.current.applicationContext
         // Shared repository instance with persistent context
         val repository = remember { DataRepositoryImpl(context) }

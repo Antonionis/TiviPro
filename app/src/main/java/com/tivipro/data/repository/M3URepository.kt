@@ -39,7 +39,7 @@ class M3URepositoryImpl(
 
             val request = Request.Builder()
                 .url(formattedUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) PolTivi/1.0")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TiviPro/1.0")
                 .build()
 
             val response = okHttpClient.newCall(request).execute()

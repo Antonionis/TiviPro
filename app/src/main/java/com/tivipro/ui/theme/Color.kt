@@ -2,14 +2,14 @@
 
 import androidx.compose.ui.graphics.Color
 
-// POLTIVI Dark Slate Palette
+// TIVIPRO Dark Slate Palette
 val DarkBackground = Color(0xFF0D0D11)
 val DarkBackgroundSecondary = Color(0xFF16161E)
 val SurfaceDark = Color(0xFF1F1F2C)
 val SurfaceDarkVariant = Color(0xFF2A2A3D)
 val SurfaceDarkCard = Color(0xFF222230)
 
-// PolTivi Blue Palette (matching PolTivi logo)
+// TiviPro Blue Palette (matching TiviPro logo)
 val BluePrimary = Color(0xFF0088FF)
 val BlueSecondary = Color(0xFF00B0FF)
 val BlueGlow = Color(0xFF00A0FF)

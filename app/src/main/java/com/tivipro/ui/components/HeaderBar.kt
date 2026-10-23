@@ -74,12 +74,12 @@ fun HeaderBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Left: PolTivi Logo + Multiview Button
+        // Left: TiviPro Logo + Multiview Button
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PolTiviLogo(
+            TiviProLogo(
                 sizeScale = 0.8f,
                 modifier = Modifier.clickable { onAccountClick() }
             )

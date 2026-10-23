@@ -22,7 +22,7 @@ data class UpdateInfo(
 
 object UpdateManager {
 
-    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/Antonionis/PolTivi/releases/latest"
+    private const val GITHUB_RELEASES_API_URL = "https://api.github.com/repos/Antonionis/TiviPro/releases/latest"
 
     private fun isVersionGreater(serverVer: String, currentVer: String): Boolean {
         val sParts = serverVer.split(".").mapNotNull { it.toIntOrNull() }
@@ -63,7 +63,7 @@ object UpdateManager {
         try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
@@ -91,7 +91,7 @@ object UpdateManager {
                     }
 
                     if (apkUrl.isBlank()) {
-                        apkUrl = "https://github.com/poltivi/poltivi/releases/latest/download/poltivi.apk"
+                        apkUrl = "https://github.com/tivipro/tivipro/releases/latest/download/tivipro.apk"
                     }
 
                     val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
@@ -110,10 +110,10 @@ object UpdateManager {
 
         // Try 2: Fallback version.json
         try {
-            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/PolTivi/main/version.json"
+            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
             val request = Request.Builder()
                 .url(fallbackUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
@@ -123,7 +123,7 @@ object UpdateManager {
                     val json = JSONObject(jsonStr)
 
                     val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
-                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk"))
+                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/Antonionis/TiviPro/releases/latest/download/tivipro.apk"))
                     val changelog = json.optString("changelog", "• Nueva versión disponible en GitHub.")
 
                     val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
@@ -167,7 +167,7 @@ object UpdateManager {
         try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "application/vnd.github+json")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
@@ -194,10 +194,10 @@ object UpdateManager {
         } catch (_: Exception) {}
 
         try {
-            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/PolTivi/main/version.json"
+            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
             val request = Request.Builder()
                 .url(fallbackUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
 
@@ -222,7 +222,7 @@ object UpdateManager {
             }
         } catch (_: Exception) {}
 
-        UpdateInfo(false, currentVersionCode, currentVersionName, "", "• PolTivi v$currentVersionName Versión Oficial\n• Novedades disponibles en GitHub.")
+        UpdateInfo(false, currentVersionCode, currentVersionName, "", "• TiviPro v$currentVersionName Versión Oficial\n• Novedades disponibles en GitHub.")
     }
 
     suspend fun downloadAndInstallApk(
@@ -235,7 +235,7 @@ object UpdateManager {
 
             val request = Request.Builder()
                 .url(apkUrl)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("Accept", "*/*")
                 .build()
 
@@ -249,7 +249,7 @@ object UpdateManager {
                 ?: context.externalCacheDir
                 ?: context.cacheDir
 
-            val apkFile = File(downloadDir, "poltivi_update.apk")
+            val apkFile = File(downloadDir, "tivipro_update.apk")
             if (apkFile.exists()) apkFile.delete()
 
             body.byteStream().use { input ->

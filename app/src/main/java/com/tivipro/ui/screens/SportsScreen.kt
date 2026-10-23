@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import com.tivipro.data.network.DeviceManager
 import com.tivipro.model.SportsEvent
 import com.tivipro.ui.components.FocusableCard
-import com.tivipro.ui.components.PolTiviLogo
+import com.tivipro.ui.components.TiviProLogo
 import com.tivipro.ui.theme.DarkBackground
 import com.tivipro.ui.theme.OrangeGlow
 import com.tivipro.ui.theme.OrangePrimary
@@ -165,7 +165,7 @@ fun SportsScreen(
                     }
                 }
 
-                PolTiviLogo(sizeScale = if (isCompactWidth) 0.6f else 0.75f, showGlow = false)
+                TiviProLogo(sizeScale = if (isCompactWidth) 0.6f else 0.75f, showGlow = false)
             }
 
             Spacer(modifier = Modifier.height(10.dp))

@@ -796,7 +796,7 @@ fun ExitConfirmationDialog(
         containerColor = SurfaceDark,
         shape = RoundedCornerShape(18.dp),
         title = {
-            Text("Salir de PolTivi", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text("Salir de TiviPro", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         },
         text = {
             Text("¿Está seguro de que desea salir de la aplicación?", color = TextMuted, fontSize = 14.sp)

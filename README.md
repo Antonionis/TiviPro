@@ -1,7 +1,7 @@
-# ⚽ PolTivi - Reproductor IPTV con Guía Deportiva y EPG
+# ⚽ TiviPro - Reproductor IPTV con Guía Deportiva y EPG
 
 <p align="center">
-  <img src="app/src/main/res/drawable/logo.png" width="140" alt="PolTivi Logo" />
+  <img src="app/src/main/res/drawable/logo.png" width="140" alt="TiviPro Logo" />
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 > [!IMPORTANT]
-> ⚠️ **PolTivi no proporciona listas de reproducción ni ningún otro contenido digital.**
+> ⚠️ **TiviPro no proporciona listas de reproducción ni ningún otro contenido digital.**
 
 ---
 
@@ -38,7 +38,7 @@
 * **Mosaico Adaptativo**: Rejilla optimizada que se escala automáticamente según el tamaño de la pantalla.
 
 ### 💾 Copia de Seguridad y Restauración Local
-* **Buscador de Archivos del Sistema**: Exportación e importación de favoritos y categorías en formato JSON (`poltivi_backup.json`).
+* **Buscador de Archivos del Sistema**: Exportación e importación de favoritos y categorías en formato JSON (`tivipro_backup.json`).
 * **Reordenación de Categorías**: Reorganiza las categorías mediante botones dobles (`[ ⏫ ]` y `[ ⏬ ]`) y oculta grupos de canales no deseados.
 
 ---
@@ -71,7 +71,7 @@
 
 Puedes descargar la última versión compilada lista para instalar en tu Smart TV o teléfono móvil desde la sección de Releases:
 
-👉 **[Descargar PolTivi APK (Última Versión)](https://github.com/Antonionis/PolTivi/releases/latest/download/poltivi.apk)**
+👉 **[Descargar TiviPro APK (Última Versión)](https://github.com/Antonionis/TiviPro/releases/latest/download/tivipro.apk)**
 
 ---
 

@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.tivipro.model.VodMovie
 import com.tivipro.ui.components.FocusableCard
-import com.tivipro.ui.components.PolTiviLogo
+import com.tivipro.ui.components.TiviProLogo
 import com.tivipro.ui.components.MovieDetailDialog
 import com.tivipro.ui.theme.DarkBackground
 import com.tivipro.ui.theme.GoldAccent
@@ -145,7 +145,7 @@ fun MoviesScreen(
                         color = Color.White
                     )
                 }
-                PolTiviLogo(sizeScale = if (isCompactWidth) 0.65f else 0.75f, showGlow = false)
+                TiviProLogo(sizeScale = if (isCompactWidth) 0.65f else 0.75f, showGlow = false)
             }
 
             LaunchedEffect(Unit) {

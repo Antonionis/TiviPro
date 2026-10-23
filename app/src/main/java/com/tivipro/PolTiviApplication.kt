@@ -5,10 +5,10 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.tivipro.data.network.NetworkModule
 
-class PolTiviApplication : Application(), ImageLoaderFactory {
+class TiviProApplication : Application(), ImageLoaderFactory {
 
     companion object {
-        lateinit var instance: PolTiviApplication
+        lateinit var instance: TiviProApplication
             private set
     }
 

@@ -1,7 +1,7 @@
-# R8 / ProGuard Optimization Rules for PolTivi
+# R8 / ProGuard Optimization Rules for TiviPro
 
 # Keep Application, Activities & Android Components
--keep public class com.tivipro.PolTiviApplication { *; }
+-keep public class com.tivipro.TiviProApplication { *; }
 -keep public class com.tivipro.MainActivity { *; }
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Application

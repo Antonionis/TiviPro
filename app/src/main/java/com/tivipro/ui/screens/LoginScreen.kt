@@ -74,7 +74,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tivipro.data.repository.DataSourceMode
-import com.tivipro.ui.components.PolTiviLogo
+import com.tivipro.ui.components.TiviProLogo
 import com.tivipro.ui.theme.DarkBackground
 import com.tivipro.ui.theme.OrangePrimary
 import com.tivipro.ui.theme.StatusError
@@ -133,7 +133,7 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Header Logo
-            PolTiviLogo(sizeScale = 1.2f, showGlow = true)
+            TiviProLogo(sizeScale = 1.2f, showGlow = true)
 
             Spacer(modifier = Modifier.height(18.dp))
 
@@ -495,7 +495,7 @@ fun LoginScreen(
                             // QR TAB CONTENT
                             val context = LocalContext.current
                             val deviceId = remember { com.tivipro.data.network.DeviceManager.getDeviceId(context) }
-                            val qrUrl = remember(deviceId) { "http://84.235.239.152/poltivi/config.php?id=$deviceId" }
+                            val qrUrl = remember(deviceId) { "http://84.235.239.152/tivipro/config.php?id=$deviceId" }
                             val qrCodeApiUrl = remember(qrUrl) { com.tivipro.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
 
                             LaunchedEffect(uiState.selectedTab) {

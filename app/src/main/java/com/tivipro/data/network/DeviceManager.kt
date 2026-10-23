@@ -30,7 +30,7 @@ data class QrCredentialsResult(
 object DeviceManager {
 
     const val MANAGEMENT_SERVER_IP = "84.235.239.152"
-    private const val DEFAULT_SERVER_URL = "http://$MANAGEMENT_SERVER_IP/poltivi/api.php"
+    private const val DEFAULT_SERVER_URL = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
 
     // Opcional: Credenciales Basic Auth si la carpeta /admin/ requiere usuario/contraseña
     var basicAuthUser: String? = null
@@ -40,7 +40,7 @@ object DeviceManager {
      * Obtiene o genera el ID único de instalación asociado a este dispositivo (6 caracteres).
      */
     fun getDeviceId(context: Context): String {
-        val prefs = context.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("tivipro_device_prefs", Context.MODE_PRIVATE)
         var id = prefs.getString("device_id", "")
         if (id.isNullOrBlank() || id.length != 6) {
             val androidId = try {
@@ -91,8 +91,8 @@ object DeviceManager {
         val modelo = "${Build.MANUFACTURER} ${Build.MODEL}"
         val versionOs = Build.VERSION.RELEASE ?: "Android"
 
-        val prefsDevice = context.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)
-        val prefsSession = context.getSharedPreferences("poltivi_session", Context.MODE_PRIVATE)
+        val prefsDevice = context.getSharedPreferences("tivipro_device_prefs", Context.MODE_PRIVATE)
+        val prefsSession = context.getSharedPreferences("tivipro_session", Context.MODE_PRIVATE)
 
         val trialDurationMs = 72 * 3600 * 1000L
         var firstInstallMs = prefsDevice.getLong("first_install_timestamp_ms", 0L)
@@ -103,7 +103,7 @@ object DeviceManager {
         val isWithinTrial = (System.currentTimeMillis() - firstInstallMs) < trialDurationMs
 
         val urls = listOf(
-            "http://$MANAGEMENT_SERVER_IP/poltivi/api.php",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php",
             "http://$MANAGEMENT_SERVER_IP/admin/api.php",
             "http://$MANAGEMENT_SERVER_IP/api.php"
         )
@@ -118,16 +118,16 @@ object DeviceManager {
                     .add("model", modelo)
                     .add("os", versionOs)
                     .add("version_os", versionOs)
-                    .add("nombre_app", "poltivi")
-                    .add("app", "poltivi")
-                    .add("app_name", "poltivi")
+                    .add("nombre_app", "tivipro")
+                    .add("app", "tivipro")
+                    .add("app_name", "tivipro")
                     .add("action", "register")
                     .build()
 
                 val requestBuilder = Request.Builder()
                     .url(urlStr)
                     .post(formBody)
-                    .header("User-Agent", "PolTivi-App")
+                    .header("User-Agent", "TiviPro-App")
                     .header("X-Device-ID", deviceId)
 
                 val user = basicAuthUser
@@ -170,18 +170,18 @@ object DeviceManager {
 
     /**
      * Consulta al servidor web si se han enviado credenciales para Iniciar Sesión por QR / Remoto.
-     * Petición: http://84.235.239.152/poltivi/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
+     * Petición: http://84.235.239.152/tivipro/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
      */
     suspend fun pollQrLoginCredentials(context: Context): QrCredentialsResult? = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
-        val urlApi = "http://$MANAGEMENT_SERVER_IP/poltivi/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=pol_tivi"
+        val urlApi = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=pol_tivi"
 
         try {
             val client = NetworkModule.getOkHttpClient()
             val requestBuilder = Request.Builder()
                 .url(urlApi)
                 .get()
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("X-Device-ID", deviceId)
 
             client.newCall(requestBuilder.build()).execute().use { response ->
@@ -259,7 +259,7 @@ object DeviceManager {
             val request = Request.Builder()
                 .url(targetUrl)
                 .post(body)
-                .header("User-Agent", "PolTivi-App")
+                .header("User-Agent", "TiviPro-App")
                 .header("X-Device-ID", deviceId)
                 .build()
 

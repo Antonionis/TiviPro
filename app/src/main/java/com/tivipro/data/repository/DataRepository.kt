@@ -26,7 +26,7 @@ enum class DataSourceMode {
 }
 
 enum class EpgSourceMode {
-    POLTIVI,
+    TIVIPRO,
     PROVIDER
 }
 
@@ -111,11 +111,11 @@ class DataRepositoryImpl(
 ) : DataRepository {
 
     private val appContext: Context? = context ?: run {
-        try { com.tivipro.PolTiviApplication.instance } catch (_: Exception) { null }
+        try { com.tivipro.TiviProApplication.instance } catch (_: Exception) { null }
     }
 
     private val prefs: SharedPreferences? by lazy {
-        appContext?.getSharedPreferences("poltivi_session", Context.MODE_PRIVATE)
+        appContext?.getSharedPreferences("tivipro_session", Context.MODE_PRIVATE)
     }
 
     private val _isLoggedIn = MutableStateFlow(
@@ -159,7 +159,7 @@ class DataRepositoryImpl(
     }
 
     private val _epgSourceMode = MutableStateFlow<EpgSourceMode>(
-        if (prefs?.getString("epg_source_mode", "POLTIVI") == "PROVIDER") EpgSourceMode.PROVIDER else EpgSourceMode.POLTIVI
+        if (prefs?.getString("epg_source_mode", "TIVIPRO") == "PROVIDER") EpgSourceMode.PROVIDER else EpgSourceMode.TIVIPRO
     )
     override val epgSourceMode: StateFlow<EpgSourceMode> = _epgSourceMode.asStateFlow()
 
@@ -170,7 +170,7 @@ class DataRepositoryImpl(
 
     private fun isTrialActive(context: Context?): Boolean {
         if (context == null) return false
-        val prefsDev = context.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)
+        val prefsDev = context.getSharedPreferences("tivipro_device_prefs", Context.MODE_PRIVATE)
         var installMs = prefsDev.getLong("first_install_timestamp_ms", 0L)
         if (installMs == 0L) {
             installMs = System.currentTimeMillis()
@@ -181,7 +181,7 @@ class DataRepositoryImpl(
 
     private val _isPremium = MutableStateFlow<Boolean>(
         prefs?.getBoolean("is_premium", false) == true ||
-        appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.getBoolean("is_premium", false) == true ||
+        appContext?.getSharedPreferences("tivipro_device_prefs", Context.MODE_PRIVATE)?.getBoolean("is_premium", false) == true ||
         isTrialActive(appContext)
     )
     override val isPremium: StateFlow<Boolean> = _isPremium.asStateFlow()
@@ -190,7 +190,7 @@ class DataRepositoryImpl(
         _isPremium.value = isPremium
         prefs?.edit()?.putBoolean("is_premium", isPremium)?.apply()
         try {
-            appContext?.getSharedPreferences("poltivi_device_prefs", Context.MODE_PRIVATE)?.edit()?.putBoolean("is_premium", isPremium)?.apply()
+            appContext?.getSharedPreferences("tivipro_device_prefs", Context.MODE_PRIVATE)?.edit()?.putBoolean("is_premium", isPremium)?.apply()
         } catch (_: Exception) {}
 
         if (!isPremium) {
@@ -410,12 +410,12 @@ class DataRepositoryImpl(
 
             val p = prefs
             if (p != null) {
-                p.edit().putString("poltivi_local_backup", jsonStr).commit()
+                p.edit().putString("tivipro_local_backup", jsonStr).commit()
                 savedAtLeastOne = true
             }
 
-            // Save as goaltv_backup.json and poltivi_backup.json
-            val filenames = listOf("goaltv_backup.json", "poltivi_backup.json")
+            // Save as goaltv_backup.json and tivipro_backup.json
+            val filenames = listOf("goaltv_backup.json", "tivipro_backup.json")
 
             // 1. Try Internal Files Dir
             try {
@@ -475,9 +475,9 @@ class DataRepositoryImpl(
     override fun importLocalBackup(): Boolean {
         return try {
             var rawJson = ""
-            val filenames = listOf("poltivi_backup.json", "goaltv_backup.json")
+            val filenames = listOf("tivipro_backup.json", "goaltv_backup.json")
 
-            // 1. Check Public Downloads first (for poltivi_backup.json then goaltv_backup.json)
+            // 1. Check Public Downloads first (for tivipro_backup.json then goaltv_backup.json)
             val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
             if (downloadsDir != null && downloadsDir.exists()) {
                 for (fn in filenames) {
@@ -520,7 +520,7 @@ class DataRepositoryImpl(
 
             // 4. Check SharedPreferences Backup
             if (rawJson.isBlank()) {
-                rawJson = prefs?.getString("poltivi_local_backup", "") ?: ""
+                rawJson = prefs?.getString("tivipro_local_backup", "") ?: ""
             }
 
             if (rawJson.isBlank()) return false
@@ -894,7 +894,7 @@ class DataRepositoryImpl(
             }
         }
 
-        // Default or Fallback: PolTivi EPG (External DobleM EPG)
+        // Default or Fallback: TiviPro EPG (External DobleM EPG)
         try {
             val xmlTvResult = sportsRepository.getXmlTvData()
             if (xmlTvResult.programs.isEmpty()) return@withContext emptyList()

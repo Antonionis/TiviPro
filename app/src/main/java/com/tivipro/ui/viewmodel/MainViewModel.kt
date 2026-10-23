@@ -99,7 +99,7 @@ class MainViewModel(
     private fun performStartupSync() {
         viewModelScope.launch {
             try {
-                val appCtx = com.tivipro.PolTiviApplication.instance
+                val appCtx = com.tivipro.TiviProApplication.instance
                 if (appCtx != null) {
                     val status = com.tivipro.data.network.DeviceManager.verificarDispositivo(appCtx)
                     repository.setPremiumStatus(status.isPremium)

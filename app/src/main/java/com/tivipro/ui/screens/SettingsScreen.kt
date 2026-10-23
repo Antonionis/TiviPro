@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import com.tivipro.ui.components.FocusableCard
-import com.tivipro.ui.components.PolTiviLogo
+import com.tivipro.ui.components.TiviProLogo
 import com.tivipro.ui.theme.OrangeGlow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -152,7 +152,7 @@ fun SettingsScreen(
                     color = Color.White
                 )
             }
-            PolTiviLogo(sizeScale = 0.75f, showGlow = false)
+            TiviProLogo(sizeScale = 0.75f, showGlow = false)
         }
 
         // Section 1: Player Decoder Settings
@@ -286,7 +286,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val sources = listOf(
-                        com.tivipro.data.repository.EpgSourceMode.POLTIVI to "PolTivi (Guía Integrada)",
+                        com.tivipro.data.repository.EpgSourceMode.TIVIPRO to "TiviPro (Guía Integrada)",
                         com.tivipro.data.repository.EpgSourceMode.PROVIDER to "Proveedor IPTV (Servidor)"
                     )
                     sources.forEach { (mode, label) ->
@@ -559,7 +559,7 @@ fun SettingsScreen(
                             }
                             val success = viewModel.repository.exportLocalBackup()
                             backupMessage = if (success) {
-                                "Copia de seguridad guardada con éxito en Descargas (poltivi_backup.json)"
+                                "Copia de seguridad guardada con éxito en Descargas (tivipro_backup.json)"
                             } else {
                                 "Error al guardar copia local de ajustes"
                             }
@@ -582,9 +582,9 @@ fun SettingsScreen(
                             }
                             val success = viewModel.repository.importLocalBackup()
                             if (success) {
-                                backupMessage = "Ajustes y favoritos restaurados con éxito desde Descargas (poltivi_backup.json)"
+                                backupMessage = "Ajustes y favoritos restaurados con éxito desde Descargas (tivipro_backup.json)"
                             } else {
-                                backupMessage = "No se encontró el archivo poltivi_backup.json en Descargas"
+                                backupMessage = "No se encontró el archivo tivipro_backup.json en Descargas"
                             }
                         },
                         modifier = Modifier.weight(1f).height(42.dp),
@@ -635,7 +635,7 @@ fun SettingsScreen(
                 versionCode = 6,
                 versionName = appVersionName,
                 apkUrl = "",
-                changelog = "• PolTivi v$appVersionName Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG PolTivi (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+                changelog = "• TiviPro v$appVersionName Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG TiviPro (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
             )
         }
 
@@ -667,7 +667,7 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Comprueba si existe una versión más reciente de PolTivi:",
+                        text = "Comprueba si existe una versión más reciente de TiviPro:",
                         fontSize = 12.sp,
                         color = TextMuted,
                         modifier = Modifier.weight(1f).padding(end = 8.dp)
@@ -733,7 +733,7 @@ fun SettingsScreen(
                             if (info.isUpdateAvailable) {
                                 manualUpdateInfo = info
                             } else {
-                                updateStatusMessage = "PolTivi está actualizado a la última versión."
+                                updateStatusMessage = "TiviPro está actualizado a la última versión."
                             }
                         }
                     },
@@ -1127,7 +1127,7 @@ fun AddPlaylistDialog(
 
     val context = LocalContext.current
     val deviceId = remember { com.tivipro.data.network.DeviceManager.getDeviceId(context) }
-    val qrUrl = remember(deviceId) { "http://84.235.239.152/poltivi/config.php?id=$deviceId" }
+    val qrUrl = remember(deviceId) { "http://84.235.239.152/tivipro/config.php?id=$deviceId" }
     val qrCodeApiUrl = remember(qrUrl) { com.tivipro.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
 
     LaunchedEffect(selectedTab) {

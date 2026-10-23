@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.tivipro.data.network.DeviceManager
 import com.tivipro.data.repository.DataRepositoryImpl
-import com.tivipro.ui.PolTiviApp
+import com.tivipro.ui.TiviProApp
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
         verificarDispositivo()
 
         setContent {
-            PolTiviApp(modifier = Modifier.fillMaxSize())
+            TiviProApp(modifier = Modifier.fillMaxSize())
         }
     }
 

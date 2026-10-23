@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val PolTiviDarkColorScheme = darkColorScheme(
+private val TiviProDarkColorScheme = darkColorScheme(
     primary = BluePrimary,
     onPrimary = TextPrimary,
     primaryContainer = SurfaceDarkVariant,
@@ -31,11 +31,11 @@ private val PolTiviDarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun PolTiviTheme(
-    darkTheme: Boolean = true, // Force dark POLTIVI theme by default
+fun TiviProTheme(
+    darkTheme: Boolean = true, // Force dark TIVIPRO theme by default
     content: @Composable () -> Unit
 ) {
-    val colorScheme = PolTiviDarkColorScheme
+    val colorScheme = TiviProDarkColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
