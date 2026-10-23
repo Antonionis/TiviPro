@@ -95,12 +95,24 @@ object DeviceManager {
         val prefsSession = context.getSharedPreferences("tivipro_session", Context.MODE_PRIVATE)
 
         val trialDurationMs = 72 * 3600 * 1000L
-        var firstInstallMs = prefsDevice.getLong("first_install_timestamp_ms", 0L)
+        var firstInstallMs = prefsDevice.getLong("fitms_v2", 0L)
         if (firstInstallMs == 0L) {
             firstInstallMs = System.currentTimeMillis()
-            prefsDevice.edit().putLong("first_install_timestamp_ms", firstInstallMs).apply()
+            prefsDevice.edit().putLong("fitms_v2", firstInstallMs).apply()
         }
-        val isWithinTrial = (System.currentTimeMillis() - firstInstallMs) < trialDurationMs
+
+        // Anti time-tampering (Clock rollback detection)
+        val currentTime = System.currentTimeMillis()
+        val lastCheckTime = prefsDevice.getLong("lctms", 0L)
+        if (currentTime < lastCheckTime) {
+            // User rolled back the clock. We penalize by advancing firstInstallMs by the difference.
+            val difference = lastCheckTime - currentTime
+            firstInstallMs -= difference
+            prefsDevice.edit().putLong("fitms_v2", firstInstallMs).apply()
+        }
+        prefsDevice.edit().putLong("lctms", currentTime).apply()
+
+        val isWithinTrial = (currentTime - firstInstallMs) < trialDurationMs
 
         val urls = listOf(
             "http://$MANAGEMENT_SERVER_IP/tivipro/api.php",
@@ -149,8 +161,11 @@ object DeviceManager {
                         val isBlocked = parseJsonBoolean(json, "bloqueado", "blocked", "is_blocked", "isBlocked", "banned")
                         val effectiveIsPremium = serverIsPremium || isWithinTrial
 
-                        prefsDevice.edit().putBoolean("is_premium", effectiveIsPremium).apply()
-                        prefsSession.edit().putBoolean("is_premium", effectiveIsPremium).apply()
+                        val expectedToken = "active_${deviceId.hashCode()}"
+                        val tokenToSave = if (effectiveIsPremium) expectedToken else "inactive"
+                        
+                        prefsDevice.edit().putString("p_status_v2", tokenToSave).apply()
+                        prefsSession.edit().putString("p_status_v2", tokenToSave).apply()
 
                         return@withContext DeviceLicenseStatus(
                             isBlocked = isBlocked,
@@ -164,7 +179,11 @@ object DeviceManager {
             }
         }
 
-        val savedPremium = prefsDevice.getBoolean("is_premium", false) || prefsSession.getBoolean("is_premium", false) || isWithinTrial
+        val expectedToken = "active_${deviceId.hashCode()}"
+        val savedTokenDev = prefsDevice.getString("p_status_v2", "")
+        val savedTokenSes = prefsSession.getString("p_status_v2", "")
+        
+        val savedPremium = (savedTokenDev == expectedToken) || (savedTokenSes == expectedToken) || isWithinTrial
         DeviceLicenseStatus(isBlocked = false, isPremium = savedPremium, deviceId = deviceId)
     }
 
