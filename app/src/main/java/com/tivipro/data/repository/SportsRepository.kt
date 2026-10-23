@@ -101,7 +101,7 @@ class SportsRepositoryImpl : SportsRepository {
         try {
             val client = NetworkModule.getOkHttpClient()
             val request = Request.Builder()
-                .url("http://84.235.239.152/prog/prog.txt")
+                .url("http://tivipro.duckdns.org/prog/prog.txt")
                 .header("User-Agent", "TiviPro-App")
                 .header("Cache-Control", "no-cache, no-store")
                 .build()
