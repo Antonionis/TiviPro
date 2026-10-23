@@ -32,6 +32,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -78,13 +81,16 @@ fun MoviesScreen(
     val uiState by viewModel.uiState.collectAsState()
     val filteredMovies = uiState.vodMovies
 
+    val gridState = rememberLazyGridState()
     val firstMovieFocusRequester = remember { FocusRequester() }
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    var hasFocusedForCategory by remember(uiState.selectedVodCategory, uiState.isMovieFavoritesSelected, uiState.searchQuery) { mutableStateOf(false) }
 
-    LaunchedEffect(filteredMovies) {
-        if (filteredMovies.isNotEmpty()) {
+    LaunchedEffect(filteredMovies, uiState.selectedVodCategory, uiState.isMovieFavoritesSelected, uiState.searchQuery) {
+        if (!hasFocusedForCategory && filteredMovies.isNotEmpty()) {
             try {
                 firstMovieFocusRequester.requestFocus()
+                hasFocusedForCategory = true
             } catch (_: Exception) {}
         }
     }
@@ -262,13 +268,14 @@ fun MoviesScreen(
                 }
             } else {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(minSize = if (isMobile) 75.dp else 105.dp),
                     contentPadding = PaddingValues(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(filteredMovies, key = { index, m -> "${m.id}_$index" }) { index, movie ->
+                    itemsIndexed(filteredMovies, key = { _, m -> m.id }) { index, movie ->
                         MoviePosterCard(
                             movie = movie,
                             onClick = { viewModel.selectMovie(movie) },

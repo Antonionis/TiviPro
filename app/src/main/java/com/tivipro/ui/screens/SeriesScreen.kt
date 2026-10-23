@@ -36,6 +36,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -77,13 +81,16 @@ fun SeriesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    val gridState = rememberLazyGridState()
     val firstSeriesFocusRequester = remember { FocusRequester() }
     val selectedCategoryFocusRequester = remember { FocusRequester() }
+    var hasFocusedForCategory by remember(uiState.selectedSeriesCategory, uiState.isSeriesFavoritesSelected) { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.seriesList) {
-        if (uiState.seriesList.isNotEmpty()) {
+    LaunchedEffect(uiState.seriesList, uiState.selectedSeriesCategory, uiState.isSeriesFavoritesSelected) {
+        if (!hasFocusedForCategory && uiState.seriesList.isNotEmpty()) {
             try {
                 firstSeriesFocusRequester.requestFocus()
+                hasFocusedForCategory = true
             } catch (_: Exception) {}
         }
     }
@@ -263,13 +270,14 @@ fun SeriesScreen(
                 }
             } else {
                 LazyVerticalGrid(
+                    state = gridState,
                     columns = GridCells.Adaptive(minSize = if (isMobile) 75.dp else 110.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(uiState.seriesList, key = { index, s -> "${s.id}_$index" }) { index, series ->
+                    itemsIndexed(uiState.seriesList, key = { _, s -> s.id }) { index, series ->
                         SeriesCard(
                             series = series,
                             onClick = { viewModel.selectSeries(series) },
