@@ -2,5 +2,5 @@
   "versionCode": 6,
   "versionName": "1.6",
   "download_url": "https://github.com/Antonionis/TiviPro/releases/download/v1.6/tivipro.apk",
-  "changelog": "• TiviPro v1.6 Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG TiviPro (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+  "changelog": "• TiviPro v1.6 Versión Oficial\n• Rebranding completo a TiviPro (nombre, imágenes y assets)\n• EPG Proveedor IPTV (Servidor) configurada como fuente por defecto\n• Inicio de sesión remoto mediante Código QR con envío de OS\n• Adaptación responsiva de carátulas para teléfonos móviles en Cine y Series\n• Mantenimiento del foco y posición de scroll al cerrar detalles de películas/series\n• Indicadores visuales con borde azul al navegar por cuenta conectada\n• Restricción automática de listas y programación deportiva para usuarios no premium"
 }
