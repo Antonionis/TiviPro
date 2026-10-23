@@ -1,5 +1,8 @@
 ﻿package com.tivipro.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -98,16 +103,29 @@ fun UpdateDialog(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
+                val scrollState = rememberScrollState()
+                var isChangelogFocused by remember { mutableStateOf(false) }
+
                 // Scrollable container for release notes content
                 Box(
                     modifier = Modifier
-                        .heightIn(max = 260.dp)
-                        .verticalScroll(rememberScrollState())
+                        .fillMaxWidth()
+                        .heightIn(max = 200.dp)
+                        .onFocusChanged { isChangelogFocused = it.isFocused }
+                        .focusable()
+                        .border(
+                            width = if (isChangelogFocused) 2.dp else 1.dp,
+                            color = if (isChangelogFocused) OrangePrimary else Color(0xFF2A2A40),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .background(Color(0xFF1E1E2C), RoundedCornerShape(8.dp))
+                        .padding(10.dp)
+                        .verticalScroll(scrollState)
                 ) {
                     Text(
                         text = updateInfo.changelog,
                         color = TextMuted,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         lineHeight = 18.sp
                     )
                 }
