@@ -91,7 +91,7 @@ object UpdateManager {
                     }
 
                     if (apkUrl.isBlank()) {
-                        apkUrl = "https://github.com/tivipro/tivipro/releases/latest/download/tivipro.apk"
+                        apkUrl = "https://github.com/Antonionis/TiviPro/releases/latest/download/tivipro.apk"
                     }
 
                     val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
