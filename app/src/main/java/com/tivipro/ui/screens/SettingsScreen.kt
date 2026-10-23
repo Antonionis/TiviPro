@@ -1,6 +1,10 @@
 ﻿package com.tivipro.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -1206,10 +1210,19 @@ fun AddPlaylistDialog(
                     colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
                 )
 
+                val xtreamTabFocus = remember { FocusRequester() }
+                val m3uTabFocus = remember { FocusRequester() }
+                val qrTabFocus = remember { FocusRequester() }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FocusableCard(
                         onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .focusRequester(xtreamTabFocus)
+                            .focusProperties { right = m3uTabFocus }
+                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.XTREAM) OrangePrimary else Color(0xFF2A2A40))
                     ) {
@@ -1219,7 +1232,15 @@ fun AddPlaylistDialog(
                     }
                     FocusableCard(
                         onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .focusRequester(m3uTabFocus)
+                            .focusProperties {
+                                left = xtreamTabFocus
+                                right = qrTabFocus
+                            }
+                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.M3U) OrangePrimary else Color(0xFF2A2A40))
                     ) {
@@ -1229,7 +1250,12 @@ fun AddPlaylistDialog(
                     }
                     FocusableCard(
                         onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
-                        modifier = Modifier.weight(1f).height(36.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .focusRequester(qrTabFocus)
+                            .focusProperties { left = m3uTabFocus }
+                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.QR) OrangePrimary else Color(0xFF2A2A40))
                     ) {
