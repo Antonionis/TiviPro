@@ -343,8 +343,21 @@ fun SettingsScreen(
         var playlistStatusMessage by remember { mutableStateOf<String?>(null) }
         val settingsScope = rememberCoroutineScope()
 
-        LaunchedEffect(Unit) {
+        LaunchedEffect(isPremium) {
             try {
+                if (!isPremium) {
+                    val playlists = viewModel.repository.getSavedPlaylists()
+                    if (playlists.size > 1) {
+                        val active = playlists.firstOrNull { it.isActive } ?: playlists.firstOrNull()
+                        if (active != null) {
+                            playlists.forEach {
+                                if (it.id != active.id) {
+                                    viewModel.repository.deletePlaylist(it.id)
+                                }
+                            }
+                        }
+                    }
+                }
                 savedPlaylists = viewModel.repository.getSavedPlaylists()
             } catch (_: Exception) {}
         }
@@ -614,9 +627,10 @@ fun SettingsScreen(
                 }
 
                 backupMessage?.let { msg ->
+                    val isError = !isPremium || msg.contains("Error") || msg.contains("No se encontró")
                     Text(
                         text = msg,
-                        color = StatusSuccess,
+                        color = if (isError) OrangeGlow else StatusSuccess,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -692,13 +706,13 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        androidx.compose.foundation.Image(
-                            painter = androidx.compose.ui.res.painterResource(
-                                id = if (isPremium) com.tivipro.R.drawable.logoprem else com.tivipro.R.drawable.logo
-                            ),
-                            contentDescription = if (isPremium) "Logo Premium" else "Logo TiviPro",
-                            modifier = Modifier.size(44.dp)
-                        )
+                        if (isPremium) {
+                            androidx.compose.foundation.Image(
+                                painter = androidx.compose.ui.res.painterResource(id = com.tivipro.R.drawable.logoprem),
+                                contentDescription = "Logo Premium",
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
 
                         Column(
                             horizontalAlignment = Alignment.End,
@@ -1019,10 +1033,10 @@ fun CategoryManagementDialog(
                                     }
                                 }
 
-                                // 1. Move to Top (⏫)
-                                FocusableCard(
-                                    onClick = {
-                                        handleReorderAction {
+                                if (isPremium) {
+                                    // 1. Move to Top (⏫)
+                                    FocusableCard(
+                                        onClick = {
                                             if (index > 0) {
                                                 focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
@@ -1030,21 +1044,19 @@ fun CategoryManagementDialog(
                                                 mutable.add(0, item)
                                                 onReorder(mutable)
                                             }
+                                        },
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("⏫", fontSize = 11.sp)
                                         }
-                                    },
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("⏫", fontSize = 11.sp)
                                     }
-                                }
 
-                                // 2. Move Up (↑)
-                                FocusableCard(
-                                    onClick = {
-                                        handleReorderAction {
+                                    // 2. Move Up (↑)
+                                    FocusableCard(
+                                        onClick = {
                                             if (index > 0) {
                                                 focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
@@ -1052,21 +1064,19 @@ fun CategoryManagementDialog(
                                                 mutable.add(index - 1, item)
                                                 onReorder(mutable)
                                             }
+                                        },
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("↑", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                         }
-                                    },
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("↑", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                     }
-                                }
 
-                                // 3. Move Down (↓)
-                                FocusableCard(
-                                    onClick = {
-                                        handleReorderAction {
+                                    // 3. Move Down (↓)
+                                    FocusableCard(
+                                        onClick = {
                                             if (index < categories.size - 1) {
                                                 focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
@@ -1074,21 +1084,19 @@ fun CategoryManagementDialog(
                                                 mutable.add(index + 1, item)
                                                 onReorder(mutable)
                                             }
+                                        },
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("↓", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                         }
-                                    },
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("↓", fontSize = 12.sp, color = OrangePrimary, fontWeight = FontWeight.Bold)
                                     }
-                                }
 
-                                // 4. Move to Bottom (⏬)
-                                FocusableCard(
-                                    onClick = {
-                                        handleReorderAction {
+                                    // 4. Move to Bottom (⏬)
+                                    FocusableCard(
+                                        onClick = {
                                             if (index < categories.size - 1) {
                                                 focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
@@ -1096,18 +1104,18 @@ fun CategoryManagementDialog(
                                                 mutable.add(item)
                                                 onReorder(mutable)
                                             }
+                                        },
+                                        shape = RoundedCornerShape(4.dp),
+                                        modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
+                                    ) {
+                                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("⏬", fontSize = 11.sp)
                                         }
-                                    },
-                                    shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("⏬", fontSize = 11.sp)
                                     }
-                                }
 
-                                Spacer(modifier = Modifier.width(6.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
 
                                 // 5. Visibility Toggle Button (👁️ Visible / 👁️ Oculta)
                                 val visBgColor = if (!isHidden) Color(0xFF0C2B1D) else Color(0xFF2B0C15)
