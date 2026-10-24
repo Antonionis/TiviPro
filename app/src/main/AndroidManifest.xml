@@ -11,7 +11,7 @@
     <application
         android:name=".TiviProApplication"
         android:allowBackup="false"
-        android:banner="@drawable/logo"
+        android:banner="@drawable/icono"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@drawable/logo"
@@ -24,7 +24,7 @@
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
-            android:banner="@drawable/logo"
+            android:banner="@drawable/icono"
             android:icon="@drawable/logo"
             android:logo="@drawable/logo"
             android:exported="true"

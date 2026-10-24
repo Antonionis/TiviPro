@@ -968,7 +968,7 @@ fun CategoryManagementDialog(
                     modifier = Modifier.heightIn(max = 420.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    itemsIndexed(categories, key = { index, cat -> "${cat.id}_$index" }) { index, cat ->
+                    itemsIndexed(categories) { index, cat ->
                         val isHidden = hiddenCategoryIds.contains(cat.id)
 
                         fun handleReorderAction(action: () -> Unit) {

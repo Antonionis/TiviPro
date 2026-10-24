@@ -227,7 +227,7 @@ object UpdateManager {
             currentVersionCode,
             currentVersionName,
             "",
-            "🚀 TiviPro v1.6\n\n✨ Novedades y Características Principales\n\nFuncionalidad Multiview (pantalla dividida), posibilidad seguir dos transmisiones en directo de forma simultánea pudiendo elegir el audio de cada una.\nGestión de Listas y Conectividad: Soporte completo y optimizado para listas M3U / M3U8 y credenciales Xtream Codes, con opción de configuración rápida y sencilla mediante códigos QR.\nGuía EPG Integrada: Incorporación de una superguía de programación interactiva en tiempo real, con opciones flexibles de visualización y compatibilidad con proveedores externos.\n\n📦 Compatibilidad mejorada: Optimizado para Android, Android TV, TV Box y Fire TV Stick (Fire OS)."
+            "🚀 TiviPro v1.7\n✨ Novedades y Mejoras Principales\nOptimización del Reproductor: Mejora sustancial en el tiempo de carga y estabilidad al reproducir contenidos en alta resolución (4K Ultra HD) mediante ExoPlayer.\n\nSincronización EPG Mejorada: Algoritmo optimizado para la carga en segundo plano de la guía XMLTV y la programación deportiva, reduciendo el consumo de recursos en dispositivos Fire TV.\n\n🛠️ Correcciones de Errores y Estabilidad\nSe corrigieron pequeños detalles de diseño en el mosaico adaptativo de la sección de Cine y Series (VOD).\n\nMayor robustez en la reconexión automática de listas M3U y credenciales Xtream Codes ante cortes de red."
         )
     }
 

@@ -48,6 +48,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,9 +57,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -104,6 +111,7 @@ fun LiveTvScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
     val selectedCategoryFocusRequester = remember { FocusRequester() }
     val selectedChannelFocusRequester = remember { FocusRequester() }
     val epgFocusRequester = remember { FocusRequester() }
@@ -243,8 +251,25 @@ fun LiveTvScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            val categoryListState = rememberLazyListState()
+            val selectedCategoryIndex = remember(uiState.selectedCategory, uiState.isFavoritesSelected, uiState.categories) {
+                if (uiState.selectedCategory == null && !uiState.isFavoritesSelected) 0
+                else if (uiState.isFavoritesSelected) 1
+                else {
+                    val idx = uiState.categories.indexOfFirst { it.id == uiState.selectedCategory?.id }
+                    if (idx >= 0) idx + 2 else 0
+                }
+            }
+
+            LaunchedEffect(selectedCategoryIndex) {
+                try {
+                    categoryListState.animateScrollToItem(selectedCategoryIndex)
+                } catch (_: Exception) {}
+            }
+
             // Categories Filter Bar
             LazyRow(
+                state = categoryListState,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -376,6 +401,9 @@ fun LiveTvScreen(
                             }
                         }
 
+                        var lastUpPressTime by remember { mutableStateOf(0L) }
+                        var lastDownPressTime by remember { mutableStateOf(0L) }
+
                         LazyColumn(
                             state = listState,
                             verticalArrangement = Arrangement.spacedBy(3.dp),
@@ -391,6 +419,43 @@ fun LiveTvScreen(
                                     onToggleFavorite = { viewModel.toggleFavorite(channel.id) },
                                     itemHeight = computedChannelRowHeight,
                                     modifier = Modifier
+                                        .onKeyEvent { event ->
+                                            if (event.type == KeyEventType.KeyDown) {
+                                                val now = System.currentTimeMillis()
+                                                if (event.key == Key.DirectionUp || event.nativeKeyEvent.keyCode == 19) {
+                                                    if (now - lastUpPressTime < 300) {
+                                                        try {
+                                                            scope.launch {
+                                                                if (uiState.channels.isNotEmpty()) {
+                                                                    listState.animateScrollToItem(0)
+                                                                    viewModel.selectChannel(uiState.channels.first())
+                                                                }
+                                                            }
+                                                        } catch (_: Exception) {}
+                                                        true
+                                                    } else {
+                                                        lastUpPressTime = now
+                                                        false
+                                                    }
+                                                } else if (event.key == Key.DirectionDown || event.nativeKeyEvent.keyCode == 20) {
+                                                    if (now - lastDownPressTime < 300) {
+                                                        try {
+                                                            scope.launch {
+                                                                if (uiState.channels.isNotEmpty()) {
+                                                                    val lastIndex = uiState.channels.size - 1
+                                                                    listState.animateScrollToItem(lastIndex)
+                                                                    viewModel.selectChannel(uiState.channels.last())
+                                                                }
+                                                            }
+                                                        } catch (_: Exception) {}
+                                                        true
+                                                    } else {
+                                                        lastDownPressTime = now
+                                                        false
+                                                    }
+                                                } else false
+                                            } else false
+                                        }
                                         .focusProperties {
                                             if (index == 0) {
                                                 up = selectedCategoryFocusRequester
