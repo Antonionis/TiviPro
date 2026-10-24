@@ -1007,11 +1007,24 @@ fun CategoryManagementDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
+                                var focusRequestedByReorder by remember { mutableStateOf(false) }
+                                val cardFocusRequester = remember(cat.id) { androidx.compose.ui.focus.FocusRequester() }
+
+                                LaunchedEffect(focusRequestedByReorder) {
+                                    if (focusRequestedByReorder) {
+                                        try {
+                                            cardFocusRequester.requestFocus()
+                                        } catch (_: Exception) {}
+                                        focusRequestedByReorder = false
+                                    }
+                                }
+
                                 // 1. Move to Top (⏫)
                                 FocusableCard(
                                     onClick = {
                                         handleReorderAction {
                                             if (index > 0) {
+                                                focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
                                                 val item = mutable.removeAt(index)
                                                 mutable.add(0, item)
@@ -1020,7 +1033,7 @@ fun CategoryManagementDialog(
                                         }
                                     },
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1033,6 +1046,7 @@ fun CategoryManagementDialog(
                                     onClick = {
                                         handleReorderAction {
                                             if (index > 0) {
+                                                focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
                                                 val item = mutable.removeAt(index)
                                                 mutable.add(index - 1, item)
@@ -1041,7 +1055,7 @@ fun CategoryManagementDialog(
                                         }
                                     },
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1054,6 +1068,7 @@ fun CategoryManagementDialog(
                                     onClick = {
                                         handleReorderAction {
                                             if (index < categories.size - 1) {
+                                                focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
                                                 val item = mutable.removeAt(index)
                                                 mutable.add(index + 1, item)
@@ -1062,7 +1077,7 @@ fun CategoryManagementDialog(
                                         }
                                     },
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1075,6 +1090,7 @@ fun CategoryManagementDialog(
                                     onClick = {
                                         handleReorderAction {
                                             if (index < categories.size - 1) {
+                                                focusRequestedByReorder = true
                                                 val mutable = categories.toMutableList()
                                                 val item = mutable.removeAt(index)
                                                 mutable.add(item)
@@ -1083,7 +1099,7 @@ fun CategoryManagementDialog(
                                         }
                                     },
                                     shape = RoundedCornerShape(4.dp),
-                                    modifier = Modifier.size(28.dp),
+                                    modifier = Modifier.size(28.dp).focusRequester(cardFocusRequester),
                                     colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1B2C))
                                 ) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1099,9 +1115,12 @@ fun CategoryManagementDialog(
                                 val visText = if (!isHidden) "👁 Visible" else "👁 Oculta"
 
                                 FocusableCard(
-                                    onClick = { onToggleHidden(cat.id) },
+                                    onClick = { 
+                                        focusRequestedByReorder = true
+                                        onToggleHidden(cat.id) 
+                                    },
                                     shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.height(30.dp),
+                                    modifier = Modifier.height(30.dp).focusRequester(cardFocusRequester),
                                     colors = CardDefaults.cardColors(containerColor = visBgColor)
                                 ) {
                                     Box(
