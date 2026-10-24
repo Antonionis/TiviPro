@@ -32,10 +32,6 @@ object DeviceManager {
     const val MANAGEMENT_SERVER_IP = "tivipro.duckdns.org"
     private const val DEFAULT_SERVER_URL = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
 
-    // Opcional: Credenciales Basic Auth si la carpeta /admin/ requiere usuario/contraseña
-    var basicAuthUser: String? = null
-    var basicAuthPass: String? = null
-
     /**
      * Obtiene o genera el ID único de instalación asociado a este dispositivo (6 caracteres).
      */
@@ -142,9 +138,9 @@ object DeviceManager {
                     .header("User-Agent", "TiviPro-App")
                     .header("X-Device-ID", deviceId)
 
-                val user = basicAuthUser
-                val pass = basicAuthPass
-                if (!user.isNullOrBlank() && !pass.isNullOrBlank()) {
+                val user = com.tivipro.BuildConfig.BASIC_AUTH_USER
+                val pass = com.tivipro.BuildConfig.BASIC_AUTH_PASS
+                if (user.isNotBlank() && pass.isNotBlank()) {
                     requestBuilder.header("Authorization", Credentials.basic(user, pass))
                 }
 
