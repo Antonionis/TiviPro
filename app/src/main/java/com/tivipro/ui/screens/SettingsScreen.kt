@@ -1142,7 +1142,7 @@ fun AddPlaylistDialog(
 
     val context = LocalContext.current
     val deviceId = remember { com.tivipro.data.network.DeviceManager.getDeviceId(context) }
-    val qrUrl = remember(deviceId) { "http://tivipro.duckdns.org/tivipro/config.php?id=$deviceId" }
+    val qrUrl = remember(deviceId) { "https://tivipro.duckdns.org/tivipro/config.php?id=$deviceId" }
     val qrCodeApiUrl = remember(qrUrl) { com.tivipro.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
 
     LaunchedEffect(selectedTab) {
@@ -1153,7 +1153,7 @@ fun AddPlaylistDialog(
                     val creds = com.tivipro.data.network.DeviceManager.pollQrLoginCredentials(context)
                     if (creds != null) {
                         if (creds.usuario.isNotBlank() && creds.password.isNotBlank()) {
-                            val sUrl = if (creds.url.isNotBlank()) creds.url else "http://tivipro.duckdns.org"
+                            val sUrl = if (creds.url.isNotBlank()) creds.url else "https://tivipro.duckdns.org"
                             val plName = name.ifBlank { "Xtream Playlist" }
                             val newPl = com.tivipro.model.SavedPlaylist(
                                 id = java.util.UUID.randomUUID().toString(),
