@@ -29,8 +29,8 @@ data class QrCredentialsResult(
 
 object DeviceManager {
 
-    const val MANAGEMENT_SERVER_IP = "tivipro.duckdns.org"
-    private const val DEFAULT_SERVER_URL = "https://$MANAGEMENT_SERVER_IP/tivipro/api.php"
+    const val MANAGEMENT_SERVER_IP = "84.235.239.152"
+    private const val DEFAULT_SERVER_URL = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
 
     /**
      * Obtiene o genera el ID único de instalación asociado a este dispositivo (6 caracteres).
@@ -80,7 +80,7 @@ object DeviceManager {
 
     /**
      * Verifica la licencia del dispositivo enviando device_id, modelo y versión de OS
-     * al servidor web en la IP tivipro.duckdns.org/admin/api.php.
+     * al servidor web en la IP 84.235.239.152/admin/api.php.
      */
     suspend fun verificarDispositivo(context: Context): DeviceLicenseStatus = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
@@ -111,7 +111,7 @@ object DeviceManager {
         val isWithinTrial = (currentTime - firstInstallMs) < trialDurationMs
 
         val urls = listOf(
-            "https://$MANAGEMENT_SERVER_IP/tivipro/api.php"
+            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
         )
 
         for (urlStr in urls) {
@@ -183,11 +183,11 @@ object DeviceManager {
 
     /**
      * Consulta al servidor web si se han enviado credenciales para Iniciar Sesión por QR / Remoto.
-     * Petición: https://tivipro.duckdns.org/tivipro/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
+     * Petición: http://84.235.239.152/tivipro/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
      */
     suspend fun pollQrLoginCredentials(context: Context): QrCredentialsResult? = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
-        val urlApi = "https://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=tivipro"
+        val urlApi = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=tivipro"
 
         try {
             val client = NetworkModule.getOkHttpClient()

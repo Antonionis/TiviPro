@@ -520,7 +520,7 @@ fun LoginScreen(
                             // QR TAB CONTENT
                             val context = LocalContext.current
                             val deviceId = remember { com.tivipro.data.network.DeviceManager.getDeviceId(context) }
-                            val qrUrl = remember(deviceId) { "https://tivipro.duckdns.org/tivipro/config.php?id=$deviceId" }
+                            val qrUrl = remember(deviceId) { "http://84.235.239.152/tivipro/config.php?id=$deviceId" }
                             val qrCodeApiUrl = remember(qrUrl) { com.tivipro.ui.components.QrCodeGenerator.getQrCodeUrl(qrUrl) }
 
                             LaunchedEffect(uiState.selectedTab) {
@@ -530,7 +530,7 @@ fun LoginScreen(
                                         val creds = com.tivipro.data.network.DeviceManager.pollQrLoginCredentials(context)
                                         if (creds != null) {
                                             if (creds.usuario.isNotBlank() && creds.password.isNotBlank()) {
-                                                val serverUrl = if (creds.url.isNotBlank()) creds.url else "https://tivipro.duckdns.org"
+                                                val serverUrl = if (creds.url.isNotBlank()) creds.url else "http://84.235.239.152"
                                                 viewModel.onServerUrlChange(serverUrl)
                                                 viewModel.onUsernameChange(creds.usuario)
                                                 viewModel.onPasswordChange(creds.password)
