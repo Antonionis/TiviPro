@@ -76,11 +76,10 @@ fun SportsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    var isPremium by remember { mutableStateOf(false) }
+    val isPremium by viewModel.repository.isPremium.collectAsState()
 
     LaunchedEffect(Unit) {
         val status = DeviceManager.verificarDispositivo(context)
-        isPremium = status.isPremium
         viewModel.repository.setPremiumStatus(status.isPremium)
         viewModel.loadSportsEvents()
     }
