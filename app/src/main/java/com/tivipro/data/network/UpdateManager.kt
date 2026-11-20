@@ -42,9 +42,9 @@ object UpdateManager {
 
         val currentVersionName = try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.0"
+            pInfo.versionName ?: "1.8"
         } catch (_: Exception) {
-            "1.0"
+            "1.8"
         }
 
         val currentVersionCode = try {
@@ -56,10 +56,42 @@ object UpdateManager {
                 pInfo.versionCode
             }
         } catch (_: Exception) {
-            1
+            8
         }
 
-        // Try 1: GitHub Releases API
+        // Try 1: Primary version.json from GitHub main branch
+        try {
+            val rawVersionUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
+            val request = Request.Builder()
+                .url(rawVersionUrl)
+                .header("User-Agent", "TiviPro-App")
+                .header("Cache-Control", "no-cache, no-store")
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val jsonStr = response.body.string()
+                    val json = JSONObject(jsonStr)
+
+                    val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
+                    val serverVersionCode = json.optInt("versionCode", currentVersionCode)
+                    val apkUrl = json.optString("download_url", json.optString("apkUrl", "https://raw.githubusercontent.com/Antonionis/TiviPro/main/tivipro.apk"))
+                    val changelog = json.optString("changelog", "• Nueva versión disponible.")
+
+                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName) || (serverVersionCode > currentVersionCode)
+
+                    return@withContext UpdateInfo(
+                        isUpdateAvailable = isAvailable,
+                        versionCode = serverVersionCode,
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else currentVersionName,
+                        apkUrl = if (apkUrl.isNotBlank()) apkUrl else "https://raw.githubusercontent.com/Antonionis/TiviPro/main/tivipro.apk",
+                        changelog = changelog
+                    )
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Try 2: GitHub Releases API
         try {
             val request = Request.Builder()
                 .url(GITHUB_RELEASES_API_URL)
@@ -91,7 +123,7 @@ object UpdateManager {
                     }
 
                     if (apkUrl.isBlank()) {
-                        apkUrl = "https://github.com/Antonionis/TiviPro/releases/latest/download/tivipro.apk"
+                        apkUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/tivipro.apk"
                     }
 
                     val serverVersionName = if (tagName.isNotBlank()) tagName else releaseName
@@ -100,40 +132,9 @@ object UpdateManager {
                     return@withContext UpdateInfo(
                         isUpdateAvailable = isAvailable,
                         versionCode = currentVersionCode + 1,
-                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.5",
+                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else currentVersionName,
                         apkUrl = apkUrl,
                         changelog = if (changelog.isNotBlank()) changelog else "• Actualización de software desde GitHub Releases."
-                    )
-                }
-            }
-        } catch (_: Exception) {}
-
-        // Try 2: Fallback version.json
-        try {
-            val fallbackUrl = "https://raw.githubusercontent.com/Antonionis/TiviPro/main/version.json"
-            val request = Request.Builder()
-                .url(fallbackUrl)
-                .header("User-Agent", "TiviPro-App")
-                .header("Cache-Control", "no-cache, no-store")
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val jsonStr = response.body.string()
-                    val json = JSONObject(jsonStr)
-
-                    val serverVersionName = json.optString("versionName", json.optString("version_name", "")).removePrefix("v").trim()
-                    val apkUrl = json.optString("apkUrl", json.optString("download_url", "https://github.com/Antonionis/TiviPro/releases/latest/download/tivipro.apk"))
-                    val changelog = json.optString("changelog", "• Nueva versión disponible en GitHub.")
-
-                    val isAvailable = isVersionGreater(serverVersionName, currentVersionName)
-
-                    return@withContext UpdateInfo(
-                        isUpdateAvailable = isAvailable,
-                        versionCode = currentVersionCode + 1,
-                        versionName = if (serverVersionName.isNotBlank()) serverVersionName else "1.6",
-                        apkUrl = apkUrl,
-                        changelog = changelog
                     )
                 }
             }
