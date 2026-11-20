@@ -17,8 +17,8 @@ android {
         applicationId = "com.tivipro"
         minSdk = 24
         targetSdk = 37
-        versionCode = 7
-        versionName = "1.7"
+        versionCode = 8
+        versionName = "1.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -110,6 +110,11 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 androidComponents {
@@ -194,11 +199,12 @@ abstract class CopyApkTask : DefaultTask() {
 }
 
 val copyDebugApk = tasks.register<CopyApkTask>("copyDebugApk") {
-    dependsOn(tasks.matching { it.name == "assembleDebug" })
     inputFile.set(layout.buildDirectory.file("outputs/apk/debug/tivipro.apk"))
     outputFile.set(layout.projectDirectory.file("../tivipro.apk"))
 }
 
-tasks.matching { it.name == "assembleDebug" }.configureEach {
-    finalizedBy(copyDebugApk)
+tasks.configureEach {
+    if (name == "assembleDebug") {
+        finalizedBy(copyDebugApk)
+    }
 }

@@ -143,13 +143,11 @@ object UpdateManager {
     }
 
     suspend fun fetchCurrentReleaseNotes(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
-        val client = NetworkModule.getOkHttpClient()
-
         val currentVersionName = try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.6"
+            pInfo.versionName ?: "1.8"
         } catch (_: Exception) {
-            "1.6"
+            "1.8"
         }
 
         val currentVersionCode = try {
@@ -161,8 +159,12 @@ object UpdateManager {
                 pInfo.versionCode
             }
         } catch (_: Exception) {
-            6
+            8
         }
+
+        val localV18Changelog = "🚀 TiviPro v$currentVersionName\n✨ Novedades y Mejoras Principales\n• EPG Optimizado: Carga ultra-ligera del evento actual + 4 eventos siguientes (máximo 5 programas por canal) con diseño compacto.\n• Acceso Rápido a Favoritos D-Pad: Pulsar a la derecha (►) en el canal enfoca el botón de corazón para marcar o desmarcarlo de favoritos.\n• Guía de Uso y Soporte: Nueva sección en Ajustes con instrucciones interactivas, trucos de navegación D-Pad y soporte técnico en Telegram.\n• Soporte QR Clicable: El enlace https://t.me/TiviProapp abre directamente la aplicación Telegram o el navegador en táctil.\n• Diseño Adaptativo Móvil y TV: Ajuste automático de diálogos en pantallas horizontales móviles y desplazamiento fluido por foco D-Pad en Smart TV.\n• Salto Rápido en Lista de Canales: Doble toque Arriba (▲) / Abajo (▼) salta al primer o al último canal."
+
+        val client = NetworkModule.getOkHttpClient()
 
         try {
             val request = Request.Builder()
@@ -179,6 +181,16 @@ object UpdateManager {
 
                     val tagName = json.optString("tag_name", "").removePrefix("v").removePrefix("V").trim()
                     val changelog = json.optString("body", "")
+
+                    if (tagName.isNotBlank() && isVersionGreater(currentVersionName, tagName)) {
+                        return@withContext UpdateInfo(
+                            isUpdateAvailable = false,
+                            versionCode = currentVersionCode,
+                            versionName = currentVersionName,
+                            apkUrl = "",
+                            changelog = localV18Changelog
+                        )
+                    }
 
                     if (changelog.isNotBlank()) {
                         return@withContext UpdateInfo(
@@ -209,6 +221,16 @@ object UpdateManager {
                     val serverVersionName = json.optString("versionName", currentVersionName)
                     val changelog = json.optString("changelog", "")
 
+                    if (isVersionGreater(currentVersionName, serverVersionName)) {
+                        return@withContext UpdateInfo(
+                            isUpdateAvailable = false,
+                            versionCode = currentVersionCode,
+                            versionName = currentVersionName,
+                            apkUrl = "",
+                            changelog = localV18Changelog
+                        )
+                    }
+
                     if (changelog.isNotBlank()) {
                         return@withContext UpdateInfo(
                             isUpdateAvailable = false,
@@ -227,7 +249,7 @@ object UpdateManager {
             currentVersionCode,
             currentVersionName,
             "",
-            "🚀 TiviPro v1.7\n✨ Novedades y Mejoras Principales\nOptimización del Reproductor: Mejora sustancial en el tiempo de carga y estabilidad al reproducir contenidos en alta resolución (4K Ultra HD) mediante ExoPlayer.\n\nSincronización EPG Mejorada: Algoritmo optimizado para la carga en segundo plano de la guía XMLTV y la programación deportiva, reduciendo el consumo de recursos en dispositivos Fire TV.\n\n🛠️ Correcciones de Errores y Estabilidad\nSe corrigieron pequeños detalles de diseño en el mosaico adaptativo de la sección de Cine y Series (VOD).\n\nMayor robustez en la reconexión automática de listas M3U y credenciales Xtream Codes ante cortes de red."
+            localV18Changelog
         )
     }
 

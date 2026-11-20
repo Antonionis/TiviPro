@@ -418,51 +418,47 @@ fun LiveTvScreen(
                                     onPlay = { onChannelPlay(channel) },
                                     onToggleFavorite = { viewModel.toggleFavorite(channel.id) },
                                     itemHeight = computedChannelRowHeight,
-                                    modifier = Modifier
-                                        .onKeyEvent { event ->
-                                            if (event.type == KeyEventType.KeyDown) {
-                                                val now = System.currentTimeMillis()
-                                                if (event.key == Key.DirectionUp || event.nativeKeyEvent.keyCode == 19) {
-                                                    if (now - lastUpPressTime < 300) {
-                                                        try {
-                                                            scope.launch {
-                                                                if (uiState.channels.isNotEmpty()) {
-                                                                    listState.animateScrollToItem(0)
-                                                                    viewModel.selectChannel(uiState.channels.first())
-                                                                }
+                                    selectedChannelFocusRequester = selectedChannelFocusRequester,
+                                    epgFocusRequester = epgFocusRequester,
+                                    isFirstItem = (index == 0),
+                                    selectedCategoryFocusRequester = selectedCategoryFocusRequester,
+                                    modifier = Modifier.onKeyEvent { event ->
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            val now = System.currentTimeMillis()
+                                            if (event.key == Key.DirectionUp || event.nativeKeyEvent.keyCode == 19) {
+                                                if (now - lastUpPressTime < 300) {
+                                                    try {
+                                                        scope.launch {
+                                                            if (uiState.channels.isNotEmpty()) {
+                                                                listState.animateScrollToItem(0)
+                                                                viewModel.selectChannel(uiState.channels.first())
                                                             }
-                                                        } catch (_: Exception) {}
-                                                        true
-                                                    } else {
-                                                        lastUpPressTime = now
-                                                        false
-                                                    }
-                                                } else if (event.key == Key.DirectionDown || event.nativeKeyEvent.keyCode == 20) {
-                                                    if (now - lastDownPressTime < 300) {
-                                                        try {
-                                                            scope.launch {
-                                                                if (uiState.channels.isNotEmpty()) {
-                                                                    val lastIndex = uiState.channels.size - 1
-                                                                    listState.animateScrollToItem(lastIndex)
-                                                                    viewModel.selectChannel(uiState.channels.last())
-                                                                }
+                                                        }
+                                                    } catch (_: Exception) {}
+                                                    true
+                                                } else {
+                                                    lastUpPressTime = now
+                                                    false
+                                                }
+                                            } else if (event.key == Key.DirectionDown || event.nativeKeyEvent.keyCode == 20) {
+                                                if (now - lastDownPressTime < 300) {
+                                                    try {
+                                                        scope.launch {
+                                                            if (uiState.channels.isNotEmpty()) {
+                                                                val lastIndex = uiState.channels.size - 1
+                                                                listState.animateScrollToItem(lastIndex)
+                                                                viewModel.selectChannel(uiState.channels.last())
                                                             }
-                                                        } catch (_: Exception) {}
-                                                        true
-                                                    } else {
-                                                        lastDownPressTime = now
-                                                        false
-                                                    }
-                                                } else false
+                                                        }
+                                                    } catch (_: Exception) {}
+                                                    true
+                                                } else {
+                                                    lastDownPressTime = now
+                                                    false
+                                                }
                                             } else false
-                                        }
-                                        .focusProperties {
-                                            if (index == 0) {
-                                                up = selectedCategoryFocusRequester
-                                            }
-                                            right = epgFocusRequester
-                                        }
-                                        .then(if (isSelected) Modifier.focusRequester(selectedChannelFocusRequester) else Modifier)
+                                        } else false
+                                    }
                                 )
                             }
                         }
@@ -532,16 +528,35 @@ fun LiveTvScreen(
                                 }
                             }
 
+                            // Filter EPG to ONLY current live event + next 4 events (max 5 total)
+                            val filteredEpgPrograms = remember(uiState.selectedChannel?.id, uiState.epgPrograms) {
+                                val programs = uiState.epgPrograms
+                                if (programs.isEmpty()) return@remember emptyList()
+
+                                val nowSec = System.currentTimeMillis() / 1000L
+                                val liveIdx = programs.indexOfFirst { it.isCurrentlyLive || (it.startTimestamp <= nowSec && it.endTimestamp > nowSec) }
+                                if (liveIdx >= 0) {
+                                    programs.subList(liveIdx, (liveIdx + 5).coerceAtMost(programs.size))
+                                } else {
+                                    val upcomingIdx = programs.indexOfFirst { it.endTimestamp > nowSec }
+                                    if (upcomingIdx >= 0) {
+                                        programs.subList(upcomingIdx, (upcomingIdx + 5).coerceAtMost(programs.size))
+                                    } else {
+                                        programs.takeLast(5)
+                                    }
+                                }
+                            }
+
                             // EPG Timeline List
                             Text(
-                                text = "GUÍA DE PROGRAMACIÓN Y LÍNEA DE TIEMPO",
+                                text = "PROGRAMACIÓN (ACTUAL Y SIGUIENTES 4)",
                                 color = TextMuted,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 6.dp)
                             )
 
-                            if (uiState.epgPrograms.isEmpty()) {
+                            if (filteredEpgPrograms.isEmpty()) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -556,23 +571,13 @@ fun LiveTvScreen(
                                 }
                             } else {
                                 val epgListState = rememberLazyListState()
-                                val currentLiveIndex = remember(uiState.selectedChannel?.id, uiState.epgPrograms) {
-                                    val idx = uiState.epgPrograms.indexOfFirst { it.isCurrentlyLive }
-                                    if (idx >= 0) idx else 0
-                                }
-
-                                LaunchedEffect(uiState.selectedChannel?.id, uiState.epgPrograms) {
-                                    try {
-                                        epgListState.scrollToItem(currentLiveIndex)
-                                    } catch (_: Exception) {}
-                                }
 
                                 LazyColumn(
                                     state = epgListState,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier.fillMaxSize()
                                 ) {
-                                    itemsIndexed(uiState.epgPrograms, key = { index, program -> "${program.id}_$index" }) { _, program ->
+                                    itemsIndexed(filteredEpgPrograms, key = { index, program -> "${program.id}_$index" }) { _, program ->
                                         EpgProgramItem(
                                             program = program,
                                             onPlayCatchup = { url ->
@@ -754,6 +759,10 @@ fun ChannelListItem(
     onPlay: () -> Unit,
     onToggleFavorite: () -> Unit,
     itemHeight: Dp = 44.dp,
+    selectedChannelFocusRequester: FocusRequester? = null,
+    epgFocusRequester: FocusRequester? = null,
+    isFirstItem: Boolean = false,
+    selectedCategoryFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -761,7 +770,7 @@ fun ChannelListItem(
             .fillMaxWidth()
             .height(itemHeight),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // Main Channel Play Area (Logo + Name + Number)
         FocusableCard(
@@ -775,6 +784,12 @@ fun ChannelListItem(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .focusProperties {
+                    if (isFirstItem && selectedCategoryFocusRequester != null) {
+                        up = selectedCategoryFocusRequester
+                    }
+                }
+                .then(if (isSelected && selectedChannelFocusRequester != null) Modifier.focusRequester(selectedChannelFocusRequester) else Modifier)
                 .onFocusChanged { state ->
                     if (state.isFocused) {
                         onSelect()
@@ -803,26 +818,30 @@ fun ChannelListItem(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = channel.name,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) OrangeGlow else Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = channel.name,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSelected) OrangeGlow else Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 
         // Dedicated Focusable Heart / Favorite Button
         FocusableCard(
             onClick = onToggleFavorite,
-            modifier = Modifier.size(34.dp),
+            modifier = Modifier
+                .size(34.dp)
+                .focusProperties {
+                    if (isFirstItem && selectedCategoryFocusRequester != null) {
+                        up = selectedCategoryFocusRequester
+                    }
+                    if (epgFocusRequester != null) {
+                        right = epgFocusRequester
+                    }
+                },
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = if (channel.isFavorite) Color(0xFF3B1A24) else Color(0xFF1E1E2C)
@@ -865,9 +884,9 @@ fun EpgProgramItem(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (isLive) Modifier.border(1.5.dp, OrangePrimary, RoundedCornerShape(8.dp)) else Modifier
+                if (isLive) Modifier.border(1.dp, OrangePrimary, RoundedCornerShape(6.dp)) else Modifier
             ),
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isLive) Color(0xFF13283E) else SurfaceDarkCard
         )
@@ -875,7 +894,7 @@ fun EpgProgramItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp)
+                .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -887,12 +906,12 @@ fun EpgProgramItem(
                         imageVector = Icons.Rounded.Schedule,
                         contentDescription = "Hora",
                         tint = if (isLive) OrangePrimary else TextMuted,
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(11.dp)
                     )
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "$startTime - $endTime",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isLive) OrangePrimary else TextSecondary
                     )
@@ -901,13 +920,13 @@ fun EpgProgramItem(
                 if (isLive) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
+                            .clip(RoundedCornerShape(3.dp))
                             .background(StatusSuccess)
-                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "EN DIRECTO",
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Black,
                             color = DarkBackground
                         )
@@ -915,33 +934,35 @@ fun EpgProgramItem(
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(3.dp))
 
             Text(
                 text = program.title,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
             if (!program.description.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = program.description,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     color = TextMuted,
-                    maxLines = 3,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
             if (isLive) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
                     progress = { program.progressPercent },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(4.dp)
+                        .height(3.dp)
                         .clip(RoundedCornerShape(2.dp)),
                     color = OrangePrimary,
                     trackColor = Color(0xFF1E3A5F)
@@ -949,19 +970,19 @@ fun EpgProgramItem(
             }
 
             if (hasCatchup && !isLive) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 FocusableCard(
                     onClick = { program.catchupUrl?.let { url -> onPlayCatchup?.invoke(url) } },
-                    shape = RoundedCornerShape(6.dp),
+                    shape = RoundedCornerShape(4.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFC62828))
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Icon(Icons.Rounded.Schedule, contentDescription = "Catchup", tint = Color.White, modifier = Modifier.size(12.dp))
-                        Text("▶ VER EN DIFERIDO (CATCH-UP)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(Icons.Rounded.Schedule, contentDescription = "Catchup", tint = Color.White, modifier = Modifier.size(10.dp))
+                        Text("▶ EN DIFERIDO", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
                 }
             }

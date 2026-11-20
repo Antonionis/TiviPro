@@ -8,6 +8,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.tivipro.ui.components.FocusableCard
 import com.tivipro.ui.components.TiviProLogo
 import com.tivipro.ui.theme.OrangeGlow
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +31,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Surface
@@ -35,6 +43,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AspectRatio
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.ListAlt
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -661,10 +670,10 @@ fun SettingsScreen(
         val currentReleaseNotesInfo = remember(appVersionName) {
             UpdateInfo(
                 isUpdateAvailable = false,
-                versionCode = 6,
+                versionCode = 8,
                 versionName = appVersionName,
                 apkUrl = "",
-                changelog = "• TiviPro v$appVersionName Versión Oficial\n• Acceso Premium de prueba gratuito durante 72 horas tras la primera instalación\n• EPG TiviPro (Guía Integrada) configurada por defecto\n• Inicio de sesión con código QR en la ventana de añadir playlist\n• Guía de programación deportiva sincronizada por fecha y hora\n• Detalle de películas TMDB ampliado con vista general, género, duración y tráiler de YouTube\n• Navegación D-Pad entre temporadas de series con teclas Izquierda/Derecha\n• Reparto principal navegable con enfoque D-Pad\n• Restricción automática de listas múltiples para usuarios no premium"
+                changelog = "• TiviPro v$appVersionName Versión Oficial\n• EPG Optimizado: Carga ultra-ligera del evento actual + 4 eventos siguientes (máximo 5 programas por canal) con diseño compacto\n• Acceso Rápido a Favoritos D-Pad: Pulsar a la derecha (►) en el canal enfoca el botón de corazón para marcar o desmarcarlo de favoritos\n• Guía de Uso y Soporte: Nueva sección en Ajustes con instrucciones interactivas, trucos de navegación D-Pad y soporte técnico oficial\n• Soporte QR Clicable: El enlace https://t.me/TiviProapp abre directamente la aplicación Telegram o navegador en táctil\n• Diseño Adaptativo Móvil y TV: Ajuste automático de diálogos en pantallas horizontales móviles y desplazamiento fluido por foco D-Pad en Smart TV\n• Salto Rápido en Lista de Canales: Doble toque Arriba (▲) / Abajo (▼) salta al primer o al último canal"
             )
         }
 
@@ -789,6 +798,70 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Section 8: Guía de uso / Soporte
+        var showAboutDialog by remember { mutableStateOf(false) }
+        var showSupportQrDialog by remember { mutableStateOf(false) }
+
+        if (showAboutDialog) {
+            AboutInstructionsDialog(
+                onDismiss = { showAboutDialog = false }
+            )
+        }
+
+        if (showSupportQrDialog) {
+            SupportQrDialog(
+                onDismiss = { showSupportQrDialog = false }
+            )
+        }
+
+        SettingsCard(
+            title = "GUÍA DE USO/SOPORTE",
+            icon = Icons.Rounded.Info
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Consulta las instrucciones de uso, trucos de navegación D-Pad y soporte técnico oficial.",
+                    fontSize = 12.sp,
+                    color = TextMuted
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    FocusableCard(
+                        onClick = { showAboutDialog = true },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        enableScale = false,
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("CÓMO USAR LA APP", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                        }
+                    }
+
+                    FocusableCard(
+                        onClick = { showSupportQrDialog = true },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        enableScale = false,
+                        colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text("SOPORTE", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                        }
+                    }
                 }
             }
         }
@@ -1415,6 +1488,292 @@ fun AddPlaylistDialog(
                                 text = "Escanea con el móvil e introduce los datos",
                                 color = OrangeGlow,
                                 fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AboutInstructionsDialog(
+    onDismiss: () -> Unit
+) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        try {
+            firstItemFocusRequester.requestFocus()
+        } catch (_: Exception) {}
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BoxWithConstraints {
+            val isCompactHeight = maxHeight < 480.dp
+            val surfaceWidth = if (isCompactHeight) 0.95f else 0.90f
+            val surfaceHeight = if (isCompactHeight) 0.95f else 0.85f
+            val outerPadding = if (isCompactHeight) 12.dp else 20.dp
+            val itemSpacing = if (isCompactHeight) 4.dp else 8.dp
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(surfaceWidth)
+                    .fillMaxHeight(surfaceHeight)
+                    .clip(RoundedCornerShape(18.dp)),
+                color = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(outerPadding)
+                ) {
+                    // Header
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(
+                                imageVector = Icons.Rounded.Info,
+                                contentDescription = null,
+                                tint = OrangePrimary,
+                                modifier = Modifier.size(if (isCompactHeight) 20.dp else 24.dp)
+                            )
+                            Text(
+                                text = "GUÍA RÁPIDA DE USO",
+                                color = Color.White,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = if (isCompactHeight) 14.sp else 16.sp
+                            )
+                        }
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(if (isCompactHeight) 32.dp else 40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Cerrar",
+                                tint = Color.White,
+                                modifier = Modifier.size(if (isCompactHeight) 18.dp else 24.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(if (isCompactHeight) 6.dp else 10.dp))
+
+                    // Instruction Items List
+                    val instructions = remember {
+                        listOf(
+                            "⚡ Salto rápido al primer y último canal" to "Al pulsar dos veces rápido hacia Arriba (▲) o hacia Abajo (▼) en la lista de canales (doble toque en la cruceta D-Pad o teclado), la lista salta instantáneamente al primer o al último canal.",
+                            "⭐ Marcado rápido de Favoritos" to "Mueve la cruceta D-Pad hacia la Derecha (►) desde la tarjeta del canal para enfocar el botón de corazón y presiona OK para marcarlo o desmarcarlo de Favoritos.",
+                            "👁️ Orden y visibilidad de categorías" to "En Gestión de Categorías: usa las flechas dobles (⏫ / ⏬) para enviar la categoría al principio o al final de la lista, las flechas simples (↑ / ↓) para subir o bajar un solo elemento, y el botón Visible/Oculta para mostrar u ocultar la categoría.",
+                            "📺 Ficha de evento EPG interactiva" to "Al pulsar sobre cualquier programa de la guía EPG en vivo o diferido, se abre el diálogo de detalles con la sinopsis completa, canal y el botón 📺 VER CANAL.",
+                            "🎥 Modo Multiview (2 Canales)" to "Activa el botón Multiview en la cabecera de Televisión para sintonizar y ver dos canales simultáneos en pantalla dividida con conmutación de audio.",
+                            "🔄 Múltiples Playlists" to "Añade y gestiona hasta 5 servidores o listas M3U diferentes desde la sección Ajustes de Servidor."
+                        )
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing)
+                    ) {
+                        itemsIndexed(instructions) { index, (title, desc) ->
+                            InstructionItem(
+                                title = title,
+                                description = desc,
+                                isCompact = isCompactHeight,
+                                modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(if (isCompactHeight) 8.dp else 12.dp))
+
+                    // Bottom Close Button
+                    FocusableCard(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (isCompactHeight) 36.dp else 42.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "ENTENDIDO",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = if (isCompactHeight) 11.sp else 12.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InstructionItem(
+    title: String,
+    description: String,
+    isCompact: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    FocusableCard(
+        onClick = {},
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(if (isCompact) 8.dp else 12.dp)) {
+            Text(
+                text = title,
+                fontSize = if (isCompact) 12.sp else 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(if (isCompact) 2.dp else 4.dp))
+            Text(
+                text = description,
+                fontSize = if (isCompact) 10.5.sp else 11.sp,
+                color = TextMuted,
+                lineHeight = if (isCompact) 13.sp else 15.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun SupportQrDialog(
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val telegramUrl = "https://t.me/TiviProapp"
+    val qrCodeUrl = remember { com.tivipro.ui.components.QrCodeGenerator.getQrCodeUrl(telegramUrl) }
+
+    fun openTelegramLink() {
+        try {
+            val intent = android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse(telegramUrl)
+            )
+            context.startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        BoxWithConstraints {
+            val isCompactHeight = maxHeight < 480.dp
+            val qrSize = if (isCompactHeight) 130.dp else 190.dp
+            val outerPadding = if (isCompactHeight) 12.dp else 20.dp
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(if (isCompactHeight) 0.85f else 0.9f)
+                    .clip(RoundedCornerShape(18.dp)),
+                color = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(outerPadding)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactHeight) 8.dp else 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "SOPORTE TÉCNICO TELEGRAM",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isCompactHeight) 13.sp else 15.sp
+                        )
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(if (isCompactHeight) 32.dp else 40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Cerrar",
+                                tint = Color.White,
+                                modifier = Modifier.size(if (isCompactHeight) 18.dp else 24.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Escanea el código QR o pulsa el enlace para ponerte en contacto con nosotros:",
+                        color = TextMuted,
+                        fontSize = if (isCompactHeight) 11.sp else 12.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+
+                    FocusableCard(
+                        onClick = { openTelegramLink() },
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        modifier = Modifier.size(qrSize)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = qrCodeUrl,
+                                contentDescription = "Código QR Soporte Telegram",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    FocusableCard(
+                        onClick = { openTelegramLink() },
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2B3C))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "https://t.me/TiviProapp",
+                                color = Color(0xFF29B6F6),
+                                fontSize = if (isCompactHeight) 12.sp else 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+                            )
+                        }
+                    }
+
+                    FocusableCard(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (isCompactHeight) 36.dp else 42.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "CERRAR",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = if (isCompactHeight) 11.sp else 12.sp,
+                                color = Color.White
                             )
                         }
                     }

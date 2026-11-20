@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "1.7",
-  "download_url": "https://github.com/Antonionis/TiviPro/releases/download/v1.7/tivipro.apk",
-  "changelog": "🚀 TiviPro v1.7\n✨ Novedades y Mejoras Principales\nOptimización del Reproductor: Mejora sustancial en el tiempo de carga y estabilidad al reproducir contenidos en alta resolución (4K Ultra HD) mediante ExoPlayer.\n\nSincronización EPG Mejorada: Algoritmo optimizado para la carga en segundo plano de la guía XMLTV y la programación deportiva, reduciendo el consumo de recursos en dispositivos Fire TV.\n\n🛠️ Correcciones de Errores y Estabilidad\nSe corrigieron pequeños detalles de diseño en el mosaico adaptativo de la sección de Cine y Series (VOD).\n\nMayor robustez en la reconexión automática de listas M3U y credenciales Xtream Codes ante cortes de red."
+  "versionCode": 8,
+  "versionName": "1.8",
+  "download_url": "https://github.com/Antonionis/TiviPro/releases/download/v1.8/tivipro.apk",
+  "changelog": "🚀 TiviPro v1.8\n✨ Novedades y Mejoras Principales\n• EPG Optimizado: Carga ultra-ligera del evento actual + 4 eventos siguientes (máximo 5 programas por canal) con diseño compacto.\n• Acceso Rápido a Favoritos D-Pad: Pulsar a la derecha (►) en el canal enfoca el botón de corazón para marcar o desmarcar favoritos.\n• Guía de Uso y Soporte: Nueva sección en Ajustes con instrucciones interactivas, trucos de navegación D-Pad y botón de Soporte Técnico en Telegram.\n• Soporte QR Clicable: El enlace https://t.me/TiviProapp abre directamente la aplicación Telegram o el navegador en dispositivos táctiles.\n• Diseño Adaptativo Móvil y TV: Ajuste automático de diálogos en pantallas horizontales móviles y desplazamiento fluido en Smart TV.\n• Salto Rápido en Lista de Canales: Doble pulsado rápido Arriba (▲) / Abajo (▼) salta al primer o al último canal."
 }
