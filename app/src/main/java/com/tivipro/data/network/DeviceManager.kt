@@ -29,8 +29,8 @@ data class QrCredentialsResult(
 
 object DeviceManager {
 
-    const val MANAGEMENT_SERVER_IP = "84.235.239.152"
-    private const val DEFAULT_SERVER_URL = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
+    const val MANAGEMENT_SERVER_IP = "tivipro.duckdns.org"
+    private const val DEFAULT_SERVER_URL = "https://$MANAGEMENT_SERVER_IP/tivipro/api.php"
 
     /**
      * Obtiene o genera el ID único de instalación asociado a este dispositivo (6 caracteres).
@@ -93,7 +93,7 @@ object DeviceManager {
 
     /**
      * Verifica la licencia del dispositivo enviando device_id, modelo y versión de OS
-     * al servidor web en la IP 84.235.239.152/admin/api.php.
+     * al servidor web en tivipro.duckdns.org/admin/api.php.
      */
     suspend fun verificarDispositivo(context: Context): DeviceLicenseStatus = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
@@ -181,11 +181,11 @@ object DeviceManager {
 
     /**
      * Consulta al servidor web si se han enviado credenciales para Iniciar Sesión por QR / Remoto.
-     * Petición: http://84.235.239.152/tivipro/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
+     * Petición: https://tivipro.duckdns.org/tivipro/api.php?device_id=[DEVICE_ID]&tipo_dispositivo=tv
      */
     suspend fun pollQrLoginCredentials(context: Context): QrCredentialsResult? = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
-        val urlApi = "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=tivipro"
+        val urlApi = "https://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&tipo_dispositivo=tv&nombre_app=tivipro"
 
         try {
             val client = NetworkModule.getOkHttpClient()
@@ -241,7 +241,7 @@ object DeviceManager {
 
     /**
      * Consulta al servidor web si se ha enviado la ID/Usuario de Telegram desde la web telegram.php.
-     * Petición: http://84.235.239.152/tivipro/telegram.php?device_id=[DEVICE_ID]&action=poll
+     * Petición: https://tivipro.duckdns.org/tivipro/telegram.php?device_id=[DEVICE_ID]&action=poll
      */
     suspend fun pollTelegramCredentials(context: Context): String? = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
@@ -249,10 +249,10 @@ object DeviceManager {
 
         val urls = listOf(
             "https://tivipro.duckdns.org/tivipro/telegram.php?device_id=$deviceId&action=poll",
-            "http://$MANAGEMENT_SERVER_IP/tivipro/telegram.php?device_id=$deviceId&action=poll",
+            "https://$MANAGEMENT_SERVER_IP/tivipro/telegram.php?device_id=$deviceId&action=poll",
             "https://tivipro.duckdns.org/tivipro/api.php?device_id=$deviceId&action=get_telegram",
-            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&action=get_telegram",
-            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId"
+            "https://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&action=get_telegram",
+            "https://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId"
         )
 
         for (urlApi in urls) {
@@ -291,7 +291,7 @@ object DeviceManager {
 
     /**
      * Sincroniza la ID/Usuario de Telegram con el servidor actualizando la columna `telegram` en la BD MySQL.
-     * Petición POST: http://84.235.239.152/tivipro/telegram.php (o api.php)
+     * Petición POST: https://tivipro.duckdns.org/tivipro/telegram.php (o api.php)
      */
     suspend fun syncTelegramUserToDatabase(context: Context, telegramUser: String): Boolean = withContext(Dispatchers.IO) {
         val deviceId = getDeviceId(context)
@@ -299,8 +299,8 @@ object DeviceManager {
 
         val urls = listOf(
             "https://tivipro.duckdns.org/tivipro/telegram.php",
-            "http://$MANAGEMENT_SERVER_IP/tivipro/telegram.php",
-            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
+            "https://$MANAGEMENT_SERVER_IP/tivipro/telegram.php",
+            "https://$MANAGEMENT_SERVER_IP/tivipro/api.php"
         )
 
         for (targetUrl in urls) {

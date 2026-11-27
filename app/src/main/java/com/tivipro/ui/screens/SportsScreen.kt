@@ -624,7 +624,7 @@ fun TelegramSetupDialog(
             context.startActivity(intent)
         } catch (_: Exception) {
             try {
-                val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://84.235.239.152/tivipro/telegram.php?id=$deviceId"))
+                val fallbackIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://tivipro.duckdns.org/tivipro/telegram.php?id=$deviceId"))
                 context.startActivity(fallbackIntent)
             } catch (_: Exception) {}
         }
