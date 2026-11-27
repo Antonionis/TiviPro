@@ -47,22 +47,33 @@
 
 * **Menú Principal**
 <p align="center">
-  <img src="images/principal.jpg" width="500" alt="principal" />
+  <img src="images/inicio.jpg" width="500" alt="inicio" />
 </p>
-* **Guía EPG en Directo**
+* **Guía EPG**
 <p align="center">
-  <img src="images/epg.jpg" width="500" alt="epg" />
+  <img src="images/epg.png" width="500" alt="epg" />
 </p>
-* **Programación Deportiva Diaria**
+* **Cine**
 <p align="center">
-  <img src="images/prog.jpg" width="500" alt="programacion" />
+  <img src="images/pelis.jpg" width="500" alt="cine" />
+  <img src="images/peli.jpg" width="500" alt="cine" />
+</p>
+* **Series**
+<p align="center">
+  <img src="images/serie.jpg" width="500" alt="series" />
+</p>
+* **Programación Deportiva Diaria con avisos a Telegram**
+<p align="center">
+  <img src="images/eventos.png" width="500" alt="programacion" />
 </p>
 * **Gestión de Categorías y Ajustes**
 <p align="center">
-  <img src="images/gestioncat.jpg" width="500" alt="categorias" />
+  <img src="images/ordenar.png" width="500" alt="categorias" />
 </p>
 <p align="center">
-  <img src="images/ajustes.jpg" width="500" alt="ajustes" />
+  <img src="images/ajustes1.png" width="500" alt="ajustes" />
+  <img src="images/ajustes2.png" width="500" alt="ajustes" />
+  <img src="images/ajustes3.png" width="500" alt="ajustes" />
 </p>
 
 ---
