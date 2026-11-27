@@ -85,6 +85,7 @@ fun PlayerScreen(
     playbackTarget: PlaybackTarget,
     repository: DataRepository,
     onChannelChange: (LiveChannel) -> Unit = {},
+    onNextEpisode: (() -> Unit)? = null,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -207,6 +208,10 @@ fun PlayerScreen(
                 isBuffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) {
                     durationMs = exoPlayer.duration.coerceAtLeast(0L)
+                } else if (state == Player.STATE_ENDED) {
+                    if (onNextEpisode != null) {
+                        onNextEpisode()
+                    }
                 }
             }
 
@@ -617,11 +622,15 @@ fun PlayerScreen(
                 }
             },
             onNextClick = {
-                if (playbackTarget.isLive) {
+                triggerInteraction()
+                if (onNextEpisode != null) {
+                    onNextEpisode()
+                } else if (playbackTarget.isLive) {
                     switchChannel(currentChannelIndex + 1)
                 } else {
-                    val target = (exoPlayer.currentPosition + 10000).coerceAtMost(durationMs)
+                    val target = (exoPlayer.currentPosition + 600_000L).coerceAtMost(durationMs)
                     exoPlayer.seekTo(target)
+                    currentPositionMs = target
                 }
             },
             onToggleAspectRatio = {

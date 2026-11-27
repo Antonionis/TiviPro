@@ -215,10 +215,30 @@ fun TiviProApp(
             // Full Screen Player Overlay when activePlaybackTarget is present
             val activeTarget = activePlaybackTarget
             if (activeTarget != null) {
+                val currentSeries = vodViewModel.uiState.collectAsState().value.selectedSeries
+                val currentEpisodes = vodViewModel.uiState.collectAsState().value.seriesEpisodes
+
+                val onNextEpisodeCallback: (() -> Unit)? = if (currentSeries != null && currentEpisodes.isNotEmpty()) {
+                    {
+                        val nextEp = vodViewModel.getNextUnwatchedEpisode(currentSeries.id, currentEpisodes)
+                        if (nextEp != null) {
+                            vodViewModel.markEpisodeWatched(currentSeries.id, nextEp.id)
+                            mainViewModel.playStream(
+                                title = nextEp.title,
+                                streamUrl = nextEp.streamUrl,
+                                subTitle = "S${nextEp.seasonNum} E${nextEp.episodeNum} • ${nextEp.duration ?: ""}",
+                                isLive = false,
+                                logoUrl = nextEp.iconUrl
+                            )
+                        }
+                    }
+                } else null
+
                 com.tivipro.ui.player.PlayerScreen(
                     playbackTarget = activeTarget,
                     repository = repository,
                     onChannelChange = { ch -> liveTvViewModel.selectChannel(ch) },
+                    onNextEpisode = onNextEpisodeCallback,
                     onBackClick = { mainViewModel.clearPlayback() }
                 )
             }

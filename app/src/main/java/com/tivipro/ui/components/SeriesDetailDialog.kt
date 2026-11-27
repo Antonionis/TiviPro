@@ -142,6 +142,27 @@ fun SeriesDetailDialog(
         }
     }
 
+    val repository = remember(context) {
+        com.tivipro.data.repository.DataRepositoryImpl.getInstance(context)
+    }
+
+    val targetEp = remember(episodes, series.id) {
+        if (episodes.isEmpty()) null
+        else {
+            val sorted = episodes.sortedWith(compareBy({ it.seasonNum }, { it.episodeNum }))
+            val unwatched = sorted.firstOrNull { !repository.isWatched(it.id) }
+            unwatched ?: sorted.firstOrNull()
+        }
+    }
+
+    LaunchedEffect(targetEp?.seasonNum) {
+        val targetSeason = targetEp?.seasonNum
+        if (targetSeason != null && seasonsList.contains(targetSeason) && targetSeason != activeSeasonNum) {
+            activeSeasonNum = targetSeason
+            onSeasonSelect(targetSeason)
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -358,10 +379,11 @@ fun SeriesDetailDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 val firstEp = filteredEpisodes.firstOrNull()
+                                val epToPlay = targetEp ?: firstEp
                                 FocusableCard(
                                     onClick = {
-                                        if (firstEp != null) {
-                                            onEpisodePlay(firstEp)
+                                        if (epToPlay != null) {
+                                            onEpisodePlay(epToPlay)
                                         }
                                     },
                                     shape = RoundedCornerShape(8.dp),
@@ -378,7 +400,7 @@ fun SeriesDetailDialog(
                                     ) {
                                         Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(if (isCompactHeight) 14.dp else 16.dp))
                                         Text(
-                                            text = "Reproducir T$selectedSeasonNum · E${firstEp?.episodeNum ?: 1}",
+                                            text = "Reproducir T${epToPlay?.seasonNum ?: activeSeasonNum} · E${epToPlay?.episodeNum ?: 1}",
                                             color = Color.White,
                                             fontSize = if (isCompactHeight) 10.5.sp else 12.sp,
                                             fontWeight = FontWeight.Bold
@@ -553,9 +575,11 @@ fun SeriesDetailDialog(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(filteredEpisodes, key = { it.id }) { episode ->
+                                val isEpWatched = remember(episode.id) { repository.isWatched(episode.id) }
                                 EpisodeGridCard(
                                     episode = episode,
                                     seriesPosterUrl = series.posterUrl,
+                                    isWatched = isEpWatched,
                                     onPlayClick = { onEpisodePlay(episode) }
                                 )
                             }
@@ -568,8 +592,10 @@ fun SeriesDetailDialog(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(filteredEpisodes, key = { it.id }) { episode ->
+                                val isEpWatched = remember(episode.id) { repository.isWatched(episode.id) }
                                 EpisodeRowItem(
                                     episode = episode,
+                                    isWatched = isEpWatched,
                                     onPlayClick = { onEpisodePlay(episode) }
                                 )
                             }
@@ -588,6 +614,7 @@ fun SeriesDetailDialog(
 fun EpisodeGridCard(
     episode: Episode,
     seriesPosterUrl: String?,
+    isWatched: Boolean = false,
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -650,6 +677,26 @@ fun EpisodeGridCard(
                     )
                 }
 
+                // Top-Right Watched Checkmark Badge (✓ VISTO)
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(StatusSuccess)
+                            .padding(horizontal = 5.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✓ VISTO",
+                            color = Color.White,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                }
+
                 // Center Play Icon overlay
                 Box(
                     modifier = Modifier
@@ -700,6 +747,7 @@ fun EpisodeGridCard(
 @Composable
 fun EpisodeRowItem(
     episode: Episode,
+    isWatched: Boolean = false,
     onPlayClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -744,6 +792,21 @@ fun EpisodeRowItem(
                         text = dur,
                         fontSize = 11.sp,
                         color = TextMuted
+                    )
+                }
+            }
+
+            if (isWatched) {
+                Surface(
+                    color = StatusSuccess,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = "✓ VISTO",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
             }

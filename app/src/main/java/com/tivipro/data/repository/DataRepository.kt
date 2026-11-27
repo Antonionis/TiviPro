@@ -127,6 +127,17 @@ class DataRepositoryImpl(
     private val sportsRepository: SportsRepository = SportsRepositoryImpl()
 ) : DataRepository {
 
+    companion object {
+        @Volatile
+        private var instance: DataRepositoryImpl? = null
+
+        fun getInstance(context: Context): DataRepositoryImpl {
+            return instance ?: synchronized(this) {
+                instance ?: DataRepositoryImpl(context.applicationContext).also { instance = it }
+            }
+        }
+    }
+
     private val appContext: Context? = context ?: run {
         try { com.tivipro.TiviProApplication.instance } catch (_: Exception) { null }
     }

@@ -139,7 +139,6 @@ fun SeriesScreen(
             onSeasonSelect = { num -> viewModel.selectSeason(num) },
             onEpisodePlay = { ep ->
                 onEpisodePlay(ep)
-                viewModel.selectSeries(null)
             },
             onToggleFavorite = { id -> viewModel.toggleSeriesFavorite(id) },
             onDismiss = { viewModel.selectSeries(null) }

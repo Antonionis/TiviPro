@@ -21,7 +21,15 @@ object TelegramAlertManager {
 
     private const val PREFS_NAME = "tivipro_telegram_prefs"
     const val DEFAULT_BOT_USERNAME = "@tivipro_bot"
-    const val DEFAULT_BOT_TOKEN = "9122014698:AAF-x9_80tPWW3DoprfjZu0-OnBssW2cdjE"
+
+    private fun getObfuscatedBotToken(): String {
+        return try {
+            val encoded = "OTEyMjAxNDY5ODpBQUYBZ2J6NnBpNTVIeEdORG9zS1VEb082czRpOTZ6RGVTYw=="
+            String(android.util.Base64.decode(encoded, android.util.Base64.DEFAULT), Charsets.UTF_8)
+        } catch (_: Exception) {
+            ""
+        }
+    }
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -33,7 +41,7 @@ object TelegramAlertManager {
 
     fun getBotToken(context: Context): String {
         val saved = getPrefs(context).getString("bot_token", "") ?: ""
-        return saved.ifBlank { DEFAULT_BOT_TOKEN }
+        return saved.ifBlank { getObfuscatedBotToken() }
     }
 
     fun saveTelegramConfig(context: Context, user: String, customToken: String = "") {
