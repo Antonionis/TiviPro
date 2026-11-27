@@ -14,13 +14,13 @@ data class XtreamUserInfoDto(
     @field:Json(name = "username") val username: String? = null,
     @field:Json(name = "password") val password: String? = null,
     @field:Json(name = "message") val message: String? = null,
-    @field:Json(name = "auth") val auth: Int? = null,
+    @field:Json(name = "auth") val auth: Any? = null,
     @field:Json(name = "status") val status: String? = null,
     @field:Json(name = "exp_date") val expDate: String? = null,
     @field:Json(name = "is_trial") val isTrial: String? = null,
-    @field:Json(name = "active_cons") val activeCons: String? = null,
+    @field:Json(name = "active_cons") val activeCons: Any? = null,
     @field:Json(name = "created_at") val createdAt: String? = null,
-    @field:Json(name = "max_connections") val maxConnections: String? = null,
+    @field:Json(name = "max_connections") val maxConnections: Any? = null,
     @field:Json(name = "allowed_output_formats") val allowedOutputFormats: List<String>? = null
 )
 
@@ -108,7 +108,12 @@ data class XtreamEpisodeDto(
     @field:Json(name = "container_extension") val containerExtension: String? = null,
     @field:Json(name = "duration") val duration: String? = null,
     @field:Json(name = "overview") val overview: String? = null,
-    @field:Json(name = "direct_source") val directSource: String? = null
+    @field:Json(name = "direct_source") val directSource: String? = null,
+    @field:Json(name = "movie_image") val movieImage: String? = null,
+    @field:Json(name = "still_path") val stillPath: String? = null,
+    @field:Json(name = "cover") val cover: String? = null,
+    @field:Json(name = "cover_big") val coverBig: String? = null,
+    @field:Json(name = "info") val info: Any? = null
 )
 
 @JsonClass(generateAdapter = true)

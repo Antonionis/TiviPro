@@ -36,8 +36,14 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -117,6 +123,10 @@ fun PlayerControls(
     val playPauseFocusRequester = remember { FocusRequester() }
     val forwardFocusRequester = remember { FocusRequester() }
     val rewindFocusRequester = remember { FocusRequester() }
+    val previousFocusRequester = remember { FocusRequester() }
+    val skipNextFocusRequester = remember { FocusRequester() }
+    val nextEpButtonFocusRequester = remember { FocusRequester() }
+    val cancelNextEpFocusRequester = remember { FocusRequester() }
     val aspectRatioFocusRequester = remember { FocusRequester() }
     val subtitlesFocusRequester = remember { FocusRequester() }
 
@@ -181,6 +191,87 @@ fun PlayerControls(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
                 )
+            }
+        }
+
+        // 30-Second Next Episode Autoplay Prompt for Series Episodes
+        val remainingMs = durationMs - currentPositionMs
+        val isEpisodeEnding = !isLive && durationMs > 60_000L && remainingMs in 1..30_000L && onNextClick != null
+        var isNextEpPromptCancelled by remember(currentPositionMs < 10_000L) { mutableStateOf(false) }
+
+        LaunchedEffect(isEpisodeEnding) {
+            if (isEpisodeEnding && !isNextEpPromptCancelled) {
+                try {
+                    delay(150)
+                    nextEpButtonFocusRequester.requestFocus()
+                } catch (_: Exception) {}
+            }
+        }
+
+        if (isEpisodeEnding && !isNextEpPromptCancelled) {
+            val remainingSec = (remainingMs / 1000L).coerceAtLeast(0L)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .safeDrawingPadding()
+                    .padding(bottom = 75.dp, end = 20.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xEE0A122C))
+                    .border(1.5.dp, OrangePrimary, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "⏭ Siguiente episodio en ${remainingSec}s",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FocusableCard(
+                            onClick = {
+                                isNextEpPromptCancelled = true
+                                onNextClick?.invoke()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = StatusSuccess),
+                            modifier = Modifier
+                                .focusRequester(nextEpButtonFocusRequester)
+                                .focusProperties { right = cancelNextEpFocusRequester }
+                        ) {
+                            Text(
+                                text = "▶ Ver siguiente",
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        FocusableCard(
+                            onClick = { isNextEpPromptCancelled = true },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                            modifier = Modifier
+                                .focusRequester(cancelNextEpFocusRequester)
+                                .focusProperties { left = nextEpButtonFocusRequester }
+                        ) {
+                            Text(
+                                text = "Cancelar",
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -307,110 +398,164 @@ fun PlayerControls(
                     }
                 }
 
+                var focusedControlLabel by remember { mutableStateOf<String?>(null) }
+
                 // Center Controls
-                Row(
+                Column(
                     modifier = Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Previous
-                    FocusableCard(
-                        onClick = onPreviousClick,
-                        shape = CircleShape,
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                        modifier = Modifier.size(44.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.SkipPrevious,
-                                contentDescription = "Anterior",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Rewind 10s
-                    FocusableCard(
-                        onClick = onRewind10s,
-                        shape = CircleShape,
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                        modifier = Modifier
-                            .focusRequester(rewindFocusRequester)
-                            .focusProperties {
-                                right = playPauseFocusRequester
+                        // Previous (Skip 10 mins back)
+                        FocusableCard(
+                            onClick = {
+                                onSeekTo((currentPositionMs - 600_000L).coerceAtLeast(0L))
+                            },
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                            modifier = Modifier
+                                .focusRequester(previousFocusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) focusedControlLabel = "Retroceder 10 minutos"
+                                }
+                                .focusProperties {
+                                    right = rewindFocusRequester
+                                }
+                                .size(44.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SkipPrevious,
+                                    contentDescription = "Retroceder 10 min",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                            .size(44.dp)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.Replay10,
-                                contentDescription = "Retroceder 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
                         }
-                    }
 
-                    // Large Play / Pause Button
-                    FocusableCard(
-                        onClick = onPlayPauseToggle,
-                        shape = CircleShape,
-                        colors = CardDefaults.cardColors(containerColor = OrangePrimary),
-                        modifier = Modifier
-                            .focusRequester(playPauseFocusRequester)
-                            .focusProperties {
-                                left = rewindFocusRequester
-                                right = forwardFocusRequester
+                        // Rewind 10s
+                        FocusableCard(
+                            onClick = onRewind10s,
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                            modifier = Modifier
+                                .focusRequester(rewindFocusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) focusedControlLabel = "Retroceder 10 segundos"
+                                }
+                                .focusProperties {
+                                    left = previousFocusRequester
+                                    right = playPauseFocusRequester
+                                }
+                                .size(44.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Replay10,
+                                    contentDescription = "Retroceder 10s",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
                             }
-                            .size(64.dp)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                contentDescription = if (isPlaying) "Pausar" else "Reproducir",
-                                tint = Color.White,
-                                modifier = Modifier.size(38.dp)
-                            )
                         }
-                    }
 
-                    // Fast Forward 10s
-                    FocusableCard(
-                        onClick = onForward10s,
-                        shape = CircleShape,
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                        modifier = Modifier
-                            .focusRequester(forwardFocusRequester)
-                            .focusProperties {
-                                left = playPauseFocusRequester
-                                right = aspectRatioFocusRequester
+                        // Large Play / Pause Button
+                        FocusableCard(
+                            onClick = onPlayPauseToggle,
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = OrangePrimary),
+                            modifier = Modifier
+                                .focusRequester(playPauseFocusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) focusedControlLabel = if (isPlaying) "Pausar" else "Reproducir"
+                                }
+                                .focusProperties {
+                                    left = rewindFocusRequester
+                                    right = forwardFocusRequester
+                                }
+                                .size(64.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(38.dp)
+                                )
                             }
-                            .size(44.dp)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.Forward10,
-                                contentDescription = "Adelantar 10s",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
+                        }
+
+                        // Fast Forward 10s
+                        FocusableCard(
+                            onClick = onForward10s,
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                            modifier = Modifier
+                                .focusRequester(forwardFocusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) focusedControlLabel = "Adelantar 10 segundos"
+                                }
+                                .focusProperties {
+                                    left = playPauseFocusRequester
+                                    right = skipNextFocusRequester
+                                }
+                                .size(44.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Forward10,
+                                    contentDescription = "Adelantar 10s",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        // Next (Skip 10 mins forward)
+                        FocusableCard(
+                            onClick = {
+                                onSeekTo((currentPositionMs + 600_000L).coerceAtMost(durationMs))
+                            },
+                            shape = CircleShape,
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                            modifier = Modifier
+                                .focusRequester(skipNextFocusRequester)
+                                .onFocusChanged { state ->
+                                    if (state.isFocused) focusedControlLabel = "Adelantar 10 minutos"
+                                }
+                                .focusProperties {
+                                    left = forwardFocusRequester
+                                }
+                                .size(44.dp)
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SkipNext,
+                                    contentDescription = "Adelantar 10 min",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
 
-                    // Next
-                    FocusableCard(
-                        onClick = onNextClick,
-                        shape = CircleShape,
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                        modifier = Modifier.size(44.dp)
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Rounded.SkipNext,
-                                contentDescription = "Siguiente",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
+                    // OSD Action Label for Preselected/Focused Control Button
+                    if (!focusedControlLabel.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = Color(0xDD0A122C),
+                            shape = RoundedCornerShape(10.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, OrangeGlow)
+                        ) {
+                            Text(
+                                text = focusedControlLabel!!,
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
                             )
                         }
                     }

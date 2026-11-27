@@ -5,6 +5,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.Save
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SystemUpdate
@@ -112,10 +114,11 @@ fun SettingsScreen(
     var selectedAspectRatio by remember { mutableStateOf("Ajustar a Pantalla") }
     var selectedBuffer by remember { mutableStateOf("Mediano (3s)") }
 
+    val context = LocalContext.current
+
     var categories by remember { mutableStateOf<List<com.tivipro.model.Category>>(emptyList()) }
     var hiddenCategoryIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-
-    val context = LocalContext.current
+    var telegramUser by remember { mutableStateOf(com.tivipro.data.network.TelegramAlertManager.getTelegramUser(context)) }
 
     LaunchedEffect(Unit) {
         try {
@@ -134,7 +137,25 @@ fun SettingsScreen(
             }
             categories = viewModel.repository.getAllLiveCategories()
             hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
+
+            // Comprobar siempre en la BD si existe ID de Telegram configurada para este dispositivo
+            val dbTelegramUser = com.tivipro.data.network.DeviceManager.pollTelegramCredentials(context)
+            if (!dbTelegramUser.isNullOrBlank()) {
+                com.tivipro.data.network.TelegramAlertManager.saveTelegramConfig(context, dbTelegramUser)
+                telegramUser = dbTelegramUser
+            } else {
+                telegramUser = com.tivipro.data.network.TelegramAlertManager.getTelegramUser(context)
+            }
         } catch (_: Exception) {}
+    }
+
+    LaunchedEffect(isPremium) {
+        if (!isPremium) {
+            if (com.tivipro.data.network.TelegramAlertManager.isConfigured(context)) {
+                com.tivipro.data.network.TelegramAlertManager.clearTelegramConfig(context)
+                telegramUser = ""
+            }
+        }
     }
 
     Column(
@@ -532,6 +553,10 @@ fun SettingsScreen(
                     viewModel.repository.toggleCategoryHidden(catId)
                     hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
                 },
+                onToggleAllHidden = { hideAll ->
+                    viewModel.repository.setAllCategoriesHidden(categories.map { it.id }, hideAll)
+                    hiddenCategoryIds = viewModel.repository.getHiddenCategoryIds()
+                },
                 onReorder = { newOrderList ->
                     categories = newOrderList
                     viewModel.repository.saveCategoryOrder(newOrderList.map { it.id })
@@ -670,10 +695,10 @@ fun SettingsScreen(
         val currentReleaseNotesInfo = remember(appVersionName) {
             UpdateInfo(
                 isUpdateAvailable = false,
-                versionCode = 8,
+                versionCode = 9,
                 versionName = appVersionName,
                 apkUrl = "",
-                changelog = "• TiviPro v$appVersionName Versión Oficial\n• EPG Optimizado: Carga ultra-ligera del evento actual + 4 eventos siguientes (máximo 5 programas por canal) con diseño compacto\n• Acceso Rápido a Favoritos D-Pad: Pulsar a la derecha (►) en el canal enfoca el botón de corazón para marcar o desmarcarlo de favoritos\n• Guía de Uso y Soporte: Nueva sección en Ajustes con instrucciones interactivas, trucos de navegación D-Pad y soporte técnico oficial\n• Soporte QR Clicable: El enlace https://t.me/TiviProapp abre directamente la aplicación Telegram o navegador en táctil\n• Diseño Adaptativo Móvil y TV: Ajuste automático de diálogos en pantallas horizontales móviles y desplazamiento fluido por foco D-Pad en Smart TV\n• Salto Rápido en Lista de Canales: Doble toque Arriba (▲) / Abajo (▼) salta al primer o al último canal"
+                changelog = "• TiviPro v$appVersionName Versión Oficial\n• Buscador de Canales de TV en Tiempo Real: Barra de búsqueda en Televisión que filtra dinámicamente los canales conforme escribes\n• Gestión Global de Categorías: Botón 'Ocultar todas / Mostrar todas' en el menú de categorías para cambiar la visibilidad a la vez\n• Recarga Completa e Instantánea: El botón de recargar en la barra superior refresca en tiempo real canales de TV, guía EPG y catálogo VOD\n• Vinculación Remota de Telegram Mejorada: Detección automática del ID de Telegram desde la web y cierre inteligente de la ventana de configuración\n• Alertas en Segundo Plano y Control Premium: Sistema de notificaciones programadas vía WorkManager que entrega avisos en Telegram incluso con la app cerrada"
             )
         }
 
@@ -798,6 +823,152 @@ fun SettingsScreen(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Section: Notificaciones y Alertas de Telegram
+        var showTelegramQrDialog by remember { mutableStateOf(false) }
+
+        if (showTelegramQrDialog) {
+            TelegramSetupDialog(
+                onDismiss = {
+                    telegramUser = com.tivipro.data.network.TelegramAlertManager.getTelegramUser(context)
+                    showTelegramQrDialog = false
+                }
+            )
+        }
+
+        SettingsCard(
+            title = "ALERTAS DE EVENTOS DEPORTIVOS (@tivipro_bot)",
+            icon = Icons.Rounded.Send
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (!isPremium) {
+                    Surface(
+                        color = Color(0xFF2B1A0E),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, OrangePrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = "⭐", fontSize = 15.sp)
+                            Text(
+                                text = "La función de alertas automáticas por Telegram está disponible exclusivamente para usuarios Premium.",
+                                color = OrangeGlow,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                if (telegramUser.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SurfaceDarkCard, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "ID DE TELEGRAM VINCULADO:",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextMuted
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(color = Color(0xFF00C853), shape = RoundedCornerShape(4.dp)) {
+                                    Text("ACTIVO", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp))
+                                }
+                                Text(
+                                    text = telegramUser,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FocusableCard(
+                                onClick = {
+                                    if (!isPremium) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "La función de alertas por Telegram está disponible solo en la versión Premium",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        showTelegramQrDialog = true
+                                    }
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A40))
+                            ) {
+                                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                    Text("CAMBIAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+
+                            FocusableCard(
+                                onClick = {
+                                    com.tivipro.data.network.TelegramAlertManager.clearTelegramConfig(context)
+                                    telegramUser = ""
+                                },
+                                shape = RoundedCornerShape(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF3A1E28))
+                            ) {
+                                Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                    Text("ELIMINAR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF3366))
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Vincula tu dispositivo TiviPro para recibir avisos automáticos en Telegram 10 minutos antes del comienzo de tus eventos deportivos favoritos:",
+                        fontSize = 12.sp,
+                        color = TextMuted
+                    )
+
+                    FocusableCard(
+                        onClick = {
+                            if (!isPremium) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "La función de alertas por Telegram está disponible solo en la versión Premium",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                showTelegramQrDialog = true
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        enableScale = false,
+                        colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "CONFIGURAR ALERTAS DE EVENTOS DEPORTIVOS A TRAVÉS DE TELEGRAM",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -979,6 +1150,7 @@ fun CategoryManagementDialog(
     hiddenCategoryIds: Set<String>,
     isPremium: Boolean,
     onToggleHidden: (String) -> Unit,
+    onToggleAllHidden: (Boolean) -> Unit,
     onReorder: (List<com.tivipro.model.Category>) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1044,6 +1216,54 @@ fun CategoryManagementDialog(
                                 color = OrangeGlow,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                val allHidden = categories.isNotEmpty() && categories.all { hiddenCategoryIds.contains(it.id) }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "CATEGORÍAS (${categories.size})",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextMuted
+                    )
+
+                    FocusableCard(
+                        onClick = {
+                            val hide = !allHidden
+                            onToggleAllHidden(hide)
+                        },
+                        shape = RoundedCornerShape(6.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (allHidden) Color(0xFF0C2B1D) else Color(0xFF2B0C15)
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .border(
+                                    1.dp,
+                                    if (allHidden) Color(0xFF00E676) else Color(0xFFFF3366),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (allHidden) "👁 MOSTRAR TODAS" else "👁 OCULTAR TODAS",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (allHidden) Color(0xFF00E676) else Color(0xFFFF3366)
                             )
                         }
                     }
@@ -1255,29 +1475,33 @@ fun AddPlaylistDialog(
                         if (creds.usuario.isNotBlank() && creds.password.isNotBlank()) {
                             val sUrl = if (creds.url.isNotBlank()) creds.url else "http://84.235.239.152"
                             val plName = name.ifBlank { "Xtream Playlist" }
+                            val targetId = initialPlaylist?.id ?: java.util.UUID.randomUUID().toString()
+                            val isCurrentlyActive = initialPlaylist?.isActive ?: false
                             val newPl = com.tivipro.model.SavedPlaylist(
-                                id = java.util.UUID.randomUUID().toString(),
+                                id = targetId,
                                 name = plName,
                                 mode = DataSourceMode.XTREAM,
                                 serverUrl = sUrl,
                                 username = creds.usuario,
                                 password = creds.password,
                                 m3uUrl = "",
-                                isActive = false
+                                isActive = isCurrentlyActive
                             )
                             onSave(newPl)
                             break
                         } else if (creds.url.isNotBlank()) {
                             val plName = name.ifBlank { "M3U Playlist" }
+                            val targetId = initialPlaylist?.id ?: java.util.UUID.randomUUID().toString()
+                            val isCurrentlyActive = initialPlaylist?.isActive ?: false
                             val newPl = com.tivipro.model.SavedPlaylist(
-                                id = java.util.UUID.randomUUID().toString(),
+                                id = targetId,
                                 name = plName,
                                 mode = DataSourceMode.M3U,
                                 serverUrl = "",
                                 username = "",
                                 password = "",
                                 m3uUrl = creds.url,
-                                isActive = false
+                                isActive = isCurrentlyActive
                             )
                             onSave(newPl)
                             break
@@ -1288,207 +1512,235 @@ fun AddPlaylistDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.9f).clip(RoundedCornerShape(16.dp)),
-            color = SurfaceDark
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("AÑADIR NUEVA PLAYLIST", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White)
-                    }
-                }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BoxWithConstraints {
+            val isCompactHeight = maxHeight < 480.dp
+            val dialogWidth = if (isCompactHeight) 0.88f else 0.70f
 
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Nombre de la lista (ej: Servidor 2)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
-                )
-
-                val xtreamTabFocus = remember { FocusRequester() }
-                val m3uTabFocus = remember { FocusRequester() }
-                val qrTabFocus = remember { FocusRequester() }
-
-                LaunchedEffect(Unit) {
-                    try {
-                        xtreamTabFocus.requestFocus()
-                    } catch (_: Exception) {}
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    FocusableCard(
-                        onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .focusRequester(xtreamTabFocus)
-                            .focusProperties { right = m3uTabFocus }
-                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.XTREAM) OrangePrimary else Color(0xFF2A2A40))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(dialogWidth)
+                    .clip(RoundedCornerShape(18.dp)),
+                color = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(if (isCompactHeight) 12.dp else 18.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactHeight) 6.dp else 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Xtream Codes", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            text = if (initialPlaylist != null) "EDITAR PLAYLIST" else "AÑADIR NUEVA PLAYLIST",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isCompactHeight) 13.sp else 15.sp
+                        )
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White, modifier = Modifier.size(18.dp))
                         }
                     }
-                    FocusableCard(
-                        onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .focusRequester(m3uTabFocus)
-                            .focusProperties {
-                                left = xtreamTabFocus
-                                right = qrTabFocus
-                            }
-                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.M3U) OrangePrimary else Color(0xFF2A2A40))
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Enlace M3U", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                    FocusableCard(
-                        onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .focusRequester(qrTabFocus)
-                            .focusProperties { left = m3uTabFocus }
-                            .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.QR) OrangePrimary else Color(0xFF2A2A40))
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("Iniciar con QR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                    }
-                }
 
-                when (selectedTab) {
-                    com.tivipro.ui.viewmodel.LoginTab.XTREAM -> {
-                        OutlinedTextField(
-                            value = serverUrl,
-                            onValueChange = { serverUrl = it },
-                            label = { Text("URL del Servidor (http://...)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
-                        )
-                        OutlinedTextField(
-                            value = username,
-                            onValueChange = { username = it },
-                            label = { Text("Usuario") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
-                        )
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            label = { Text("Contraseña") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
-                        )
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Nombre de la lista (ej: Servidor 2)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                    )
 
+                    val xtreamTabFocus = remember { FocusRequester() }
+                    val m3uTabFocus = remember { FocusRequester() }
+                    val qrTabFocus = remember { FocusRequester() }
+
+                    LaunchedEffect(Unit) {
+                        try {
+                            xtreamTabFocus.requestFocus()
+                        } catch (_: Exception) {}
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         FocusableCard(
-                            onClick = {
-                                val plName = name.ifBlank { "Xtream Playlist" }
-                                val newPl = com.tivipro.model.SavedPlaylist(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    name = plName,
-                                    mode = DataSourceMode.XTREAM,
-                                    serverUrl = serverUrl,
-                                    username = username,
-                                    password = password,
-                                    m3uUrl = m3uUrl,
-                                    isActive = false
-                                )
-                                onSave(newPl)
-                            },
-                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(if (isCompactHeight) 32.dp else 36.dp)
+                                .focusRequester(xtreamTabFocus)
+                                .focusProperties { right = m3uTabFocus }
+                                .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.XTREAM },
                             shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                            colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.XTREAM) OrangePrimary else Color(0xFF2A2A40))
                         ) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                Text("Xtream Codes", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
-                    }
-                    com.tivipro.ui.viewmodel.LoginTab.M3U -> {
-                        OutlinedTextField(
-                            value = m3uUrl,
-                            onValueChange = { m3uUrl = it },
-                            label = { Text("URL de la lista M3U") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
-                        )
-
                         FocusableCard(
-                            onClick = {
-                                val plName = name.ifBlank { "M3U Playlist" }
-                                val newPl = com.tivipro.model.SavedPlaylist(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    name = plName,
-                                    mode = DataSourceMode.M3U,
-                                    serverUrl = serverUrl,
-                                    username = username,
-                                    password = password,
-                                    m3uUrl = m3uUrl,
-                                    isActive = false
-                                )
-                                onSave(newPl)
-                            },
-                            modifier = Modifier.fillMaxWidth().height(42.dp),
+                            onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(if (isCompactHeight) 32.dp else 36.dp)
+                                .focusRequester(m3uTabFocus)
+                                .focusProperties {
+                                    left = xtreamTabFocus
+                                    right = qrTabFocus
+                                }
+                                .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.M3U },
                             shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                            colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.M3U) OrangePrimary else Color(0xFF2A2A40))
                         ) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                Text("Enlace M3U", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                        FocusableCard(
+                            onClick = { selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(if (isCompactHeight) 32.dp else 36.dp)
+                                .focusRequester(qrTabFocus)
+                                .focusProperties { left = m3uTabFocus }
+                                .onFocusChanged { if (it.isFocused) selectedTab = com.tivipro.ui.viewmodel.LoginTab.QR },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (selectedTab == com.tivipro.ui.viewmodel.LoginTab.QR) OrangePrimary else Color(0xFF2A2A40))
+                        ) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Iniciar con QR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
-                    com.tivipro.ui.viewmodel.LoginTab.QR -> {
-                        Column(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = "Añadir Playlist escaneando código QR",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+
+                    when (selectedTab) {
+                        com.tivipro.ui.viewmodel.LoginTab.XTREAM -> {
+                            OutlinedTextField(
+                                value = serverUrl,
+                                onValueChange = { serverUrl = it },
+                                label = { Text("URL del Servidor (http://...)") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                            )
+                            OutlinedTextField(
+                                value = username,
+                                onValueChange = { username = it },
+                                label = { Text("Usuario") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                            )
+                            OutlinedTextField(
+                                value = password,
+                                onValueChange = { password = it },
+                                label = { Text("Contraseña") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
                             )
 
-                            Box(
-                                modifier = Modifier
-                                    .size(180.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White)
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
+                            FocusableCard(
+                                onClick = {
+                                    val plName = name.ifBlank { "Xtream Playlist" }
+                                    val targetId = initialPlaylist?.id ?: java.util.UUID.randomUUID().toString()
+                                    val isCurrentlyActive = initialPlaylist?.isActive ?: false
+                                    val newPl = com.tivipro.model.SavedPlaylist(
+                                        id = targetId,
+                                        name = plName,
+                                        mode = DataSourceMode.XTREAM,
+                                        serverUrl = serverUrl,
+                                        username = username,
+                                        password = password,
+                                        m3uUrl = m3uUrl,
+                                        isActive = isCurrentlyActive
+                                    )
+                                    onSave(newPl)
+                                },
+                                modifier = Modifier.fillMaxWidth().height(if (isCompactHeight) 38.dp else 42.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = OrangePrimary)
                             ) {
-                                AsyncImage(
-                                    model = qrCodeApiUrl,
-                                    contentDescription = "Código QR de inicio de sesión",
-                                    modifier = Modifier.fillMaxSize()
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                }
+                            }
+                        }
+                        com.tivipro.ui.viewmodel.LoginTab.M3U -> {
+                            OutlinedTextField(
+                                value = m3uUrl,
+                                onValueChange = { m3uUrl = it },
+                                label = { Text("URL de la lista M3U") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = OrangePrimary, unfocusedBorderColor = TextMuted)
+                            )
+
+                            FocusableCard(
+                                onClick = {
+                                    val plName = name.ifBlank { "M3U Playlist" }
+                                    val targetId = initialPlaylist?.id ?: java.util.UUID.randomUUID().toString()
+                                    val isCurrentlyActive = initialPlaylist?.isActive ?: false
+                                    val newPl = com.tivipro.model.SavedPlaylist(
+                                        id = targetId,
+                                        name = plName,
+                                        mode = DataSourceMode.M3U,
+                                        serverUrl = serverUrl,
+                                        username = username,
+                                        password = password,
+                                        m3uUrl = m3uUrl,
+                                        isActive = isCurrentlyActive
+                                    )
+                                    onSave(newPl)
+                                },
+                                modifier = Modifier.fillMaxWidth().height(if (isCompactHeight) 38.dp else 42.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("GUARDAR Y CONECTAR", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                }
+                            }
+                        }
+                        com.tivipro.ui.viewmodel.LoginTab.QR -> {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Añadir Playlist escaneando código QR",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (isCompactHeight) 120.dp else 160.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White)
+                                        .padding(6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(
+                                        model = qrCodeApiUrl,
+                                        contentDescription = "Código QR de inicio de sesión",
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+
+                                Text(
+                                    text = "Escanea con el móvil e introduce los datos",
+                                    color = OrangeGlow,
+                                    fontSize = 11.sp
                                 )
                             }
-
-                            Text(
-                                text = "Escanea con el móvil e introduce los datos",
-                                color = OrangeGlow,
-                                fontSize = 12.sp
-                            )
                         }
                     }
                 }
@@ -1572,8 +1824,8 @@ fun AboutInstructionsDialog(
                         listOf(
                             "⚡ Salto rápido al primer y último canal" to "Al pulsar dos veces rápido hacia Arriba (▲) o hacia Abajo (▼) en la lista de canales (doble toque en la cruceta D-Pad o teclado), la lista salta instantáneamente al primer o al último canal.",
                             "⭐ Marcado rápido de Favoritos" to "Mueve la cruceta D-Pad hacia la Derecha (►) desde la tarjeta del canal para enfocar el botón de corazón y presiona OK para marcarlo o desmarcarlo de Favoritos.",
+                            "🔔 Alertas de eventos deportivos por Telegram" to "Abre la web mediante el código QR y sigue estos pasos:\n1. Inicia conversación con @tivipro_bot y pulsa INICIAR.\n2. Consulta tu ID numérico en @userinfobot, pulsa INICIAR y copia el ID.\n3. Introduce tu ID en la web y pulsa guardar para vincularlo a TiviPro.",
                             "👁️ Orden y visibilidad de categorías" to "En Gestión de Categorías: usa las flechas dobles (⏫ / ⏬) para enviar la categoría al principio o al final de la lista, las flechas simples (↑ / ↓) para subir o bajar un solo elemento, y el botón Visible/Oculta para mostrar u ocultar la categoría.",
-                            "📺 Ficha de evento EPG interactiva" to "Al pulsar sobre cualquier programa de la guía EPG en vivo o diferido, se abre el diálogo de detalles con la sinopsis completa, canal y el botón 📺 VER CANAL.",
                             "🎥 Modo Multiview (2 Canales)" to "Activa el botón Multiview en la cabecera de Televisión para sintonizar y ver dos canales simultáneos en pantalla dividida con conmutación de audio.",
                             "🔄 Múltiples Playlists" to "Añade y gestiona hasta 5 servidores o listas M3U diferentes desde la sección Ajustes de Servidor."
                         )

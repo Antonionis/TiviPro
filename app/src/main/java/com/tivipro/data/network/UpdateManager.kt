@@ -146,9 +146,9 @@ object UpdateManager {
     suspend fun fetchCurrentReleaseNotes(context: Context): UpdateInfo = withContext(Dispatchers.IO) {
         val currentVersionName = try {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            pInfo.versionName ?: "1.8"
+            pInfo.versionName ?: "1.9"
         } catch (_: Exception) {
-            "1.8"
+            "1.9"
         }
 
         val currentVersionCode = try {
@@ -160,10 +160,26 @@ object UpdateManager {
                 pInfo.versionCode
             }
         } catch (_: Exception) {
-            8
+            9
         }
 
-        val localV18Changelog = "🚀 TiviPro v$currentVersionName\n✨ Novedades y Mejoras Principales\n• EPG Optimizado: Carga ultra-ligera del evento actual + 4 eventos siguientes (máximo 5 programas por canal) con diseño compacto.\n• Acceso Rápido a Favoritos D-Pad: Pulsar a la derecha (►) en el canal enfoca el botón de corazón para marcar o desmarcarlo de favoritos.\n• Guía de Uso y Soporte: Nueva sección en Ajustes con instrucciones interactivas, trucos de navegación D-Pad y soporte técnico en Telegram.\n• Soporte QR Clicable: El enlace https://t.me/TiviProapp abre directamente la aplicación Telegram o el navegador en táctil.\n• Diseño Adaptativo Móvil y TV: Ajuste automático de diálogos en pantallas horizontales móviles y desplazamiento fluido por foco D-Pad en Smart TV.\n• Salto Rápido en Lista de Canales: Doble toque Arriba (▲) / Abajo (▼) salta al primer o al último canal."
+        val localV19Changelog = "🚀 TiviPro v$currentVersionName - Novedades y Mejoras Principales\n\n" +
+                "✨ Rediseño de la Pantalla Principal:\n" +
+                "• Nueva interfaz limpia y moderna con portadas en alta definición y accesos directos optimizados a TV, Cine, Series, Deportes y Diferido.\n" +
+                "• Botón de Ajustes ubicado de forma accesible en el encabezado superior junto al perfil de usuario.\n\n" +
+                "🔍 Búsqueda Independiente en Tiempo Real:\n" +
+                "• Buscadores dedicados e independientes dentro de las secciones de Cine, Series y TV en Directo con filtrado ultrarrápido y fluido al teclear.\n\n" +
+                "🎬 Experiencia Cinemática en Cine y Series:\n" +
+                "• Despliegue automático de portadas, sinopsis de TMDb, logos oficiales transparentes en PNG y tarjetas del reparto técnico.\n" +
+                "• Fichas interactivas de los actores con biografía completa en español y sección \"Conocido por\".\n" +
+                "• Ficha de detalles con recuadros técnicos informativos: Año de estreno, Géneros y Clasificación por edad oficial.\n" +
+                "• Seguimiento inteligente de reproducción: Marcado de episodios vistos (✓ VISTO) y autoselección del siguiente capítulo pendiente.\n\n" +
+                "▶ Control Avanzado del Reproductor:\n" +
+                "• Avance y retroceso rápido de 10 minutos (botones Skip) y 10 segundos con etiquetas informativas flotantes OSD.\n" +
+                "• Aviso emergente automático a los 30 segundos del final para reproducir el siguiente episodio de la serie.\n" +
+                "• Barra de progreso táctil y fluida para desplazar el video al minuto exacto deseado.\n\n" +
+                "⚽ Alertas Deportivas por Telegram:\n" +
+                "• Programación automática de avisos de eventos deportivos a través del Bot de Telegram para recibir alertas en tu teléfono 10 minutos antes del partido, incluso con la TV apagada."
 
         val client = NetworkModule.getOkHttpClient()
 
@@ -189,7 +205,7 @@ object UpdateManager {
                             versionCode = currentVersionCode,
                             versionName = currentVersionName,
                             apkUrl = "",
-                            changelog = localV18Changelog
+                            changelog = localV19Changelog
                         )
                     }
 
@@ -228,7 +244,7 @@ object UpdateManager {
                             versionCode = currentVersionCode,
                             versionName = currentVersionName,
                             apkUrl = "",
-                            changelog = localV18Changelog
+                            changelog = localV19Changelog
                         )
                     }
 
@@ -250,7 +266,7 @@ object UpdateManager {
             currentVersionCode,
             currentVersionName,
             "",
-            localV18Changelog
+            localV19Changelog
         )
     }
 

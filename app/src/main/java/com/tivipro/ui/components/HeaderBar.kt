@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -80,8 +81,7 @@ fun HeaderBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             TiviProLogo(
-                sizeScale = 0.8f,
-                modifier = Modifier.clickable { onAccountClick() }
+                sizeScale = 0.8f
             )
 
             if (onMultiviewClick != null) {
@@ -151,34 +151,6 @@ fun HeaderBar(
                 HeaderClock()
             }
 
-            // Search Button: "Búsqueda maestra"
-            FocusableCard(
-                onClick = onSearchClick,
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
-                elevation = 2.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = "Búsqueda maestra",
-                        tint = OrangePrimary,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(5.dp))
-                    Text(
-                        text = "Búsqueda maestra",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
             // Reload Playlist Button (Actualizar Lista)
             FocusableCard(
                 onClick = onReloadClick,
@@ -202,7 +174,7 @@ fun HeaderBar(
                 }
             }
 
-            // Account Icon Button
+            // Account Icon Button (User)
             FocusableCard(
                 onClick = onAccountClick,
                 shape = CircleShape,
@@ -217,6 +189,27 @@ fun HeaderBar(
                     Icon(
                         imageVector = Icons.Rounded.AccountCircle,
                         contentDescription = "Cuenta / Iniciar Sesión",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // Settings Icon Button (Wheel - to the RIGHT of User)
+            FocusableCard(
+                onClick = onSettingsClick,
+                shape = CircleShape,
+                colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard),
+                elevation = 2.dp,
+                modifier = Modifier.size(34.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "Ajustes",
                         tint = Color.White,
                         modifier = Modifier.size(18.dp)
                     )

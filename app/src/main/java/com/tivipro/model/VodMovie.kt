@@ -2,13 +2,16 @@
 
 data class CastMember(
     val name: String,
-    val role: String? = null
+    val role: String? = null,
+    val profileUrl: String? = null
 )
 
 data class VodMovie(
     val id: String,
     val name: String,
     val posterUrl: String? = null,
+    val backdropUrl: String? = null,
+    val logoUrl: String? = null,
     val streamUrl: String,
     val categoryId: String,
     val rating: Double? = null,
@@ -18,6 +21,7 @@ data class VodMovie(
     val durationMinutes: Int? = null,
     val isFavorite: Boolean = false,
     val genres: String? = null,
+    val certification: String? = null,
     val trailerUrl: String? = null,
     val cast: List<CastMember> = emptyList()
 )

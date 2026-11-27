@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -168,7 +170,12 @@ fun DashboardScreen(
                 isReloading = isReloading,
                 isDohEnabled = isDohEnabled,
                 onSearchClick = { showSearchDialog = true },
-                onReloadClick = { viewModel.reloadPlaylist() },
+                onReloadClick = {
+                    viewModel.reloadPlaylist {
+                        liveTvViewModel.loadData()
+                        vodViewModel.loadData()
+                    }
+                },
                 onAccountClick = { viewModel.navigateTo(AppScreen.LOGIN) },
                 onSettingsClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
                 onToggleDoh = { viewModel.setDohEnabled(!isDohEnabled) }
@@ -249,18 +256,19 @@ fun DashboardScreen(
                     )
                 }
 
-                // RIGHT COLUMN TILES: 3 STACKED VIOLET TILES (PROGRAMACION DEPORTIVA, ACTUALIZAR LISTA & AJUSTES)
+                // RIGHT COLUMN TILES: STACKED VIOLET TILES (PROGRAMACION DEPORTIVA & CATCH-UP DIFERIDO)
                 Column(
                     modifier = Modifier
                         .weight(1.2f)
                         .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(if (isCompactWidth) 4.dp else 8.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactWidth) 6.dp else 10.dp)
                 ) {
                     // Tile 1: PROGRAMACION DEPORTIVA
                     StackedVioletTile(
                         title = "PROGRAMACION DEPORTIVA",
                         subtitle = "",
                         icon = Icons.Rounded.EmojiEvents,
+                        imageUrl = R.drawable.deportes,
                         isCompact = isCompactWidth || isCompactHeight,
                         onClick = { viewModel.navigateTo(AppScreen.SPORTS) },
                         modifier = Modifier
@@ -275,6 +283,7 @@ fun DashboardScreen(
                         title = "CATCH-UP (DIFERIDO)",
                         subtitle = "",
                         icon = Icons.Rounded.Schedule,
+                        imageUrl = R.drawable.catchup,
                         isCompact = isCompactWidth || isCompactHeight,
                         onClick = {
                             dashboardScope.launch {
@@ -294,19 +303,6 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .weight(1f)
                             .focusRequester(actualizarFocusRequester)
-                    )
-
-                    // Tile 3: AJUSTES
-                    StackedVioletTile(
-                        title = "AJUSTES",
-                        subtitle = "",
-                        icon = Icons.Rounded.Settings,
-                        isCompact = isCompactWidth || isCompactHeight,
-                        onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .focusRequester(ajustesFocusRequester)
                     )
                 }
             }
@@ -457,13 +453,14 @@ fun TallPosterCard(
 }
 
 /**
- * Right Column: Stacked Violet/Purple Tiles
+ * Right Column: Stacked Tiles matching TV, Cine, Series Poster Style
  */
 @Composable
 fun StackedVioletTile(
     title: String,
     subtitle: String,
     icon: ImageVector,
+    imageUrl: Int? = null,
     isCompact: Boolean = false,
     isAnimating: Boolean = false,
     onClick: () -> Unit,
@@ -483,57 +480,91 @@ fun StackedVioletTile(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            Color(0xFF311B92),
-                            Color(0xFF512DA8),
-                            Color(0xFF673AB7)
-                        )
-                    )
-                )
-                .padding(horizontal = if (isCompact) 8.dp else 14.dp, vertical = if (isCompact) 6.dp else 10.dp),
-            contentAlignment = Alignment.CenterStart
+                .background(Color(0xFF0F1528))
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 12.dp)
-            ) {
+            // Full Cover Image matching TV, Cine, Series
+            if (imageUrl != null) {
+                Image(
+                    painter = painterResource(id = imageUrl),
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Dark Bottom Gradient Overlay for maximum text contrast
                 Box(
                     modifier = Modifier
-                        .size(if (isCompact) 32.dp else 42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.White.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = title,
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(if (isCompact) 18.dp else 24.dp)
-                            .rotate(rotation)
-                    )
-                }
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.2f),
+                                    Color.Black.copy(alpha = 0.6f),
+                                    Color.Black.copy(alpha = 0.9f)
+                                )
+                            )
+                        )
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF131A33),
+                                    Color(0xFF1B2447),
+                                    Color(0xFF0F1528)
+                                )
+                            )
+                        )
+                )
+            }
 
-                Column {
+            // Top-Left Translucent Icon
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(if (isCompact) 8.dp else 10.dp)
+                    .size(if (isCompact) 28.dp else 34.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(if (isCompact) 16.dp else 20.dp)
+                        .rotate(rotation)
+                )
+            }
+
+            // Title & Subtitle at the LOWER PART OF THE IMAGE (Baja de la imagen)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomStart)
+                    .padding(horizontal = if (isCompact) 10.dp else 14.dp, vertical = if (isCompact) 8.dp else 12.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = if (isCompact) 11.5.sp else 13.5.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.3.sp,
+                    maxLines = 1
+                )
+                if (subtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = title,
-                        color = Color.White,
-                        fontSize = if (isCompact) 12.sp else 15.sp,
-                        fontWeight = FontWeight.ExtraBold,
+                        text = subtitle,
+                        color = Color.White.copy(alpha = 0.85f),
+                        fontSize = if (isCompact) 9.sp else 10.5.sp,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1
                     )
-                    if (subtitle.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = subtitle,
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = if (isCompact) 9.sp else 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1
-                        )
-                    }
                 }
             }
         }

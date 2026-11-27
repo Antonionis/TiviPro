@@ -1,6 +1,9 @@
 ﻿package com.tivipro.data.repository
 
 import android.util.Base64
+import org.json.JSONObject
+import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.tivipro.data.network.XtreamCodesService
 import com.tivipro.model.AuthResponse
 import com.tivipro.model.Category
@@ -49,43 +52,19 @@ class XtreamRepositoryImpl(
     }
 
     private fun normalizePlayerApiUrl(serverUrl: String): String {
-        var clean = serverUrl.trim()
+        var clean = serverUrl.trim().removeSuffix("/").removeSuffix("/player_api.php").trim()
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
             clean = "http://$clean"
         }
-
-        try {
-            val uri = java.net.URI(clean)
-            val scheme = uri.scheme ?: "http"
-            val host = uri.host ?: ""
-            val port = uri.port
-            val portStr = if (port != -1 && port != 80 && port != 443) ":$port" else ""
-            if (host.isNotBlank()) {
-                clean = "$scheme://$host$portStr"
-            }
-        } catch (_: Exception) {}
-
         return "$clean/player_api.php"
     }
 
     private fun formatBaseServerUrl(serverUrl: String): String {
-        var clean = serverUrl.trim()
+        var clean = serverUrl.trim().removeSuffix("/").removeSuffix("/player_api.php").trim()
         if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
             clean = "http://$clean"
         }
-
-        try {
-            val uri = java.net.URI(clean)
-            val scheme = uri.scheme ?: "http"
-            val host = uri.host ?: ""
-            val port = uri.port
-            val portStr = if (port != -1 && port != 80 && port != 443) ":$port" else ""
-            if (host.isNotBlank()) {
-                return "$scheme://$host$portStr"
-            }
-        } catch (_: Exception) {}
-
-        return clean.removeSuffix("/player_api.php").removeSuffix("/")
+        return clean
     }
 
     override suspend fun authenticate(
@@ -95,27 +74,48 @@ class XtreamRepositoryImpl(
     ): Result<AuthResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val endpoint = normalizePlayerApiUrl(serverUrl)
+            val client = com.tivipro.data.network.NetworkModule.getOkHttpClient()
+
+            val httpUrl = try {
+                endpoint.toHttpUrlOrNull()?.newBuilder()
+                    ?.addQueryParameter("username", username.trim())
+                    ?.addQueryParameter("password", password.trim())
+                    ?.build()
+            } catch (_: Exception) { null }
+
+            val targetUrl = httpUrl?.toString() ?: "$endpoint?username=${java.net.URLEncoder.encode(username.trim(), "UTF-8")}&password=${java.net.URLEncoder.encode(password.trim(), "UTF-8")}"
+
+            var request = Request.Builder()
+                .url(targetUrl)
+                .header("User-Agent", "IPTVSmartersPro")
+                .header("Accept", "*/*")
+                .build()
+
             var response = try {
-                service.authenticate(endpoint, username, password)
+                client.newCall(request).execute()
             } catch (e: Exception) {
-                if (endpoint.startsWith("https://")) {
-                    val httpEndpoint = endpoint.replace("https://", "http://")
-                    service.authenticate(httpEndpoint, username, password)
+                if (targetUrl.startsWith("https://")) {
+                    val httpTarget = targetUrl.replace("https://", "http://")
+                    request = Request.Builder().url(httpTarget).header("User-Agent", "IPTVSmartersPro").build()
+                    client.newCall(request).execute()
                 } else throw e
             }
 
-            if (!response.isSuccessful && endpoint.startsWith("https://")) {
-                val httpEndpoint = endpoint.replace("https://", "http://")
+            if (!response.isSuccessful && targetUrl.startsWith("https://")) {
+                val httpTarget = targetUrl.replace("https://", "http://")
                 try {
-                    val httpResp = service.authenticate(httpEndpoint, username, password)
+                    val httpReq = Request.Builder().url(httpTarget).header("User-Agent", "IPTVSmartersPro").build()
+                    val httpResp = client.newCall(httpReq).execute()
                     if (httpResp.isSuccessful) {
                         response = httpResp
                     }
                 } catch (_: Exception) {}
             }
 
+            val responseBodyStr = response.body?.string() ?: ""
+
             if (!response.isSuccessful) {
-                val code = response.code()
+                val code = response.code
                 val msg = if (code == 502) {
                     "Servidor IPTV inaccesible (HTTP 502 Bad Gateway). Compruebe la URL y puerto."
                 } else {
@@ -124,37 +124,48 @@ class XtreamRepositoryImpl(
                 throw Exception(msg)
             }
 
-            val body = response.body() ?: throw Exception("Fallo de conexión con el servidor")
+            // Parse response body with fail-safe JSONObject fallback
+            val json = try {
+                JSONObject(responseBodyStr)
+            } catch (_: Exception) {
+                val firstBrace = responseBodyStr.indexOf('{')
+                val lastBrace = responseBodyStr.lastIndexOf('}')
+                if (firstBrace >= 0 && lastBrace > firstBrace) {
+                    JSONObject(responseBodyStr.substring(firstBrace, lastBrace + 1))
+                } else null
+            } ?: throw Exception("El servidor no devolvió una respuesta válida.")
 
-            val userInfoDto = body.userInfo
-            val serverInfoDto = body.serverInfo
+            val userInfoObj = json.optJSONObject("user_info")
+            val serverInfoObj = json.optJSONObject("server_info")
 
-            if (userInfoDto != null && userInfoDto.auth == 0) {
-                throw Exception("Usuario o contraseña incorrectos")
+            val authVal = userInfoObj?.optInt("auth", 1) ?: json.optInt("auth", 1)
+            if (authVal == 0) {
+                val msg = userInfoObj?.optString("message") ?: "Usuario o contraseña incorrectos"
+                throw Exception(msg)
             }
 
             val userInfo = XtreamUserInfo(
-                username = userInfoDto?.username?.ifBlank { username } ?: username,
-                password = userInfoDto?.password?.ifBlank { password } ?: password,
-                message = userInfoDto?.message,
-                auth = userInfoDto?.auth ?: 1,
-                status = userInfoDto?.status ?: "Active",
-                expDate = userInfoDto?.expDate,
-                isTrial = userInfoDto?.isTrial,
-                activeCons = userInfoDto?.activeCons ?: "0",
-                createdAt = userInfoDto?.createdAt,
-                maxConnections = userInfoDto?.maxConnections ?: "1",
-                allowedOutputFormats = userInfoDto?.allowedOutputFormats ?: listOf("m3u8", "ts")
+                username = userInfoObj?.optString("username", username)?.ifBlank { username } ?: username,
+                password = userInfoObj?.optString("password", password)?.ifBlank { password } ?: password,
+                message = userInfoObj?.optString("message"),
+                auth = authVal,
+                status = userInfoObj?.optString("status", "Active") ?: "Active",
+                expDate = userInfoObj?.optString("exp_date"),
+                isTrial = userInfoObj?.optString("is_trial"),
+                activeCons = userInfoObj?.optString("active_cons", "0") ?: "0",
+                createdAt = userInfoObj?.optString("created_at"),
+                maxConnections = userInfoObj?.optString("max_connections", "1") ?: "1",
+                allowedOutputFormats = listOf("m3u8", "ts")
             )
 
             val serverInfo = ServerInfo(
-                url = serverInfoDto?.url ?: formatBaseServerUrl(serverUrl),
-                port = serverInfoDto?.port,
-                httpsPort = serverInfoDto?.httpsPort,
-                serverProtocol = serverInfoDto?.serverProtocol,
-                rtmpPort = serverInfoDto?.rtmpPort,
-                timezone = serverInfoDto?.timezone,
-                now = serverInfoDto?.timestamp
+                url = serverInfoObj?.optString("url") ?: formatBaseServerUrl(serverUrl),
+                port = serverInfoObj?.optString("port"),
+                httpsPort = serverInfoObj?.optString("https_port"),
+                serverProtocol = serverInfoObj?.optString("server_protocol"),
+                rtmpPort = serverInfoObj?.optString("rtmp_port"),
+                timezone = serverInfoObj?.optString("timezone"),
+                now = serverInfoObj?.optLong("timestamp", 0L)
             )
 
             AuthResponse(userInfo = userInfo, serverInfo = serverInfo)
@@ -391,41 +402,172 @@ class XtreamRepositoryImpl(
     ): Result<List<Episode>> = withContext(Dispatchers.IO) {
         runCatching {
             val endpoint = normalizePlayerApiUrl(serverUrl)
-            val response = service.getSeriesInfo(endpoint, username, password, seriesId = seriesId)
-            val body = response.body() ?: return@runCatching emptyList()
             val baseUrl = formatBaseServerUrl(serverUrl)
+            val client = com.tivipro.data.network.NetworkModule.getOkHttpClient()
+
+            val targetUrl = "$endpoint?username=${java.net.URLEncoder.encode(username.trim(), "UTF-8")}&password=${java.net.URLEncoder.encode(password.trim(), "UTF-8")}&action=get_series_info&series_id=$seriesId"
+
+            val request = Request.Builder()
+                .url(targetUrl)
+                .header("User-Agent", "IPTVSmartersPro")
+                .header("Accept", "*/*")
+                .build()
+
+            val response = try {
+                client.newCall(request).execute()
+            } catch (_: Exception) { null }
+
+            val responseBodyStr = response?.body?.string() ?: ""
+
             val resultEpisodes = mutableListOf<Episode>()
 
-            body.episodes?.forEach { (_, epList) ->
-                epList.forEach { dto ->
-                    val idStr = safeToString(dto.id)
-                    if (idStr.isNotBlank()) {
-                        val ext = dto.containerExtension?.ifBlank { "mp4" } ?: "mp4"
-                        val epNum = safeToInt(dto.episodeNum) ?: 1
-                        val sNum = safeToInt(dto.season) ?: 1
-                        val streamUrl = if (!dto.directSource.isNullOrBlank()) {
-                            dto.directSource
-                        } else {
-                            buildSeriesStreamUrl(baseUrl, username, password, idStr, ext)
-                        }
+            val json = try {
+                if (responseBodyStr.isNotBlank()) JSONObject(responseBodyStr) else null
+            } catch (_: Exception) {
+                val firstBrace = responseBodyStr.indexOf('{')
+                val lastBrace = responseBodyStr.lastIndexOf('}')
+                if (firstBrace >= 0 && lastBrace > firstBrace) {
+                    try { JSONObject(responseBodyStr.substring(firstBrace, lastBrace + 1)) } catch (_: Exception) { null }
+                } else null
+            }
 
-                        resultEpisodes.add(
-                            Episode(
-                                id = idStr,
-                                title = dto.title ?: "Episode $epNum",
-                                episodeNum = epNum,
-                                seasonNum = sNum,
-                                streamUrl = streamUrl,
-                                containerExtension = ext,
-                                duration = dto.duration,
-                                overview = dto.overview
-                            )
-                        )
+            if (json != null) {
+                val episodesObj = json.optJSONObject("episodes")
+                val episodesArr = json.optJSONArray("episodes")
+
+                if (episodesObj != null) {
+                    val seasonKeys = episodesObj.keys()
+                    while (seasonKeys.hasNext()) {
+                        val seasonKey = seasonKeys.next()
+                        val epArray = episodesObj.optJSONArray(seasonKey) ?: continue
+                        for (i in 0 until epArray.length()) {
+                            val epObj = epArray.optJSONObject(i) ?: continue
+                            val ep = parseEpisodeFromJsonObject(epObj, baseUrl, username, password)
+                            if (ep != null) resultEpisodes.add(ep)
+                        }
+                    }
+                } else if (episodesArr != null) {
+                    for (i in 0 until episodesArr.length()) {
+                        val epObj = episodesArr.optJSONObject(i) ?: continue
+                        val ep = parseEpisodeFromJsonObject(epObj, baseUrl, username, password)
+                        if (ep != null) resultEpisodes.add(ep)
                     }
                 }
             }
+
+            // Fallback to Moshi service if JSONObject produced no episodes
+            if (resultEpisodes.isEmpty()) {
+                val moshiResp = try {
+                    service.getSeriesInfo(endpoint, username, password, seriesId = seriesId)
+                } catch (_: Exception) { null }
+
+                moshiResp?.body()?.episodes?.forEach { (_, epList) ->
+                    epList.forEach { dto ->
+                        val idStr = safeToString(dto.id)
+                        if (idStr.isNotBlank()) {
+                            val ext = dto.containerExtension?.ifBlank { "mp4" } ?: "mp4"
+                            val epNum = safeToInt(dto.episodeNum) ?: 1
+                            val sNum = safeToInt(dto.season) ?: 1
+                            val streamUrl = if (!dto.directSource.isNullOrBlank()) {
+                                dto.directSource
+                            } else {
+                                buildSeriesStreamUrl(baseUrl, username, password, idStr, ext)
+                            }
+                            val infoMap = dto.info as? Map<*, *>
+                            val rawImage = dto.movieImage
+                                ?: dto.stillPath
+                                ?: dto.cover
+                                ?: dto.coverBig
+                                ?: (infoMap?.get("movie_image") as? String)
+                                ?: (infoMap?.get("still_path") as? String)
+                                ?: (infoMap?.get("cover") as? String)
+                                ?: (infoMap?.get("cover_big") as? String)
+
+                            val resolvedIconUrl = if (!rawImage.isNullOrBlank()) {
+                                if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
+                                    rawImage
+                                } else if (rawImage.startsWith("/")) {
+                                    "https://image.tmdb.org/t/p/w500$rawImage"
+                                } else {
+                                    "https://image.tmdb.org/t/p/w500/$rawImage"
+                                }
+                            } else null
+
+                            resultEpisodes.add(
+                                Episode(
+                                    id = idStr,
+                                    title = dto.title ?: "Episodio $epNum",
+                                    episodeNum = epNum,
+                                    seasonNum = sNum,
+                                    streamUrl = streamUrl,
+                                    containerExtension = ext,
+                                    duration = dto.duration,
+                                    overview = dto.overview,
+                                    iconUrl = resolvedIconUrl
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
             resultEpisodes
         }
+    }
+
+    private fun parseEpisodeFromJsonObject(
+        obj: JSONObject,
+        baseUrl: String,
+        username: String,
+        password: String
+    ): Episode? {
+        val idStr = safeToString(obj.opt("id") ?: obj.opt("stream_id"))
+        if (idStr.isBlank()) return null
+
+        val ext = obj.optString("container_extension", "mp4").ifBlank { "mp4" }
+        val epNum = obj.optInt("episode_num", 1).let { if (it <= 0) 1 else it }
+        val sNum = obj.optInt("season", 1).let { if (it <= 0) 1 else it }
+        val title = obj.optString("title").ifBlank { "Episodio $epNum" }
+        val directSource = obj.optString("direct_source")
+
+        val streamUrl = if (directSource.isNotBlank()) {
+            directSource
+        } else {
+            buildSeriesStreamUrl(baseUrl, username, password, idStr, ext)
+        }
+
+        val infoObj = obj.optJSONObject("info")
+        val rawImage = obj.optString("movie_image").ifBlank {
+            obj.optString("still_path").ifBlank {
+                obj.optString("cover").ifBlank {
+                    infoObj?.optString("movie_image")?.ifBlank {
+                        infoObj?.optString("still_path")
+                    } ?: ""
+                }
+            }
+        }
+
+        val resolvedIconUrl = if (rawImage.isNotBlank()) {
+            if (rawImage.startsWith("http://") || rawImage.startsWith("https://")) {
+                rawImage
+            } else if (rawImage.startsWith("/")) {
+                "https://image.tmdb.org/t/p/w500$rawImage"
+            } else {
+                "https://image.tmdb.org/t/p/w500/$rawImage"
+            }
+        } else null
+
+        return Episode(
+            id = idStr,
+            title = title,
+            episodeNum = epNum,
+            seasonNum = sNum,
+            streamUrl = streamUrl,
+            containerExtension = ext,
+            duration = obj.optString("duration").ifBlank { null },
+            overview = obj.optString("overview").ifBlank { null },
+            iconUrl = resolvedIconUrl
+        )
     }
 
     override suspend fun getShortEpg(

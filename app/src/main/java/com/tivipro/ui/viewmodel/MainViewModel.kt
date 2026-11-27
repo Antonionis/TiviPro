@@ -11,6 +11,7 @@ import com.tivipro.data.repository.DataSourceMode
 import com.tivipro.data.repository.SearchResult
 import com.tivipro.model.LiveChannel
 import com.tivipro.model.VodMovie
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -279,13 +280,28 @@ class MainViewModel(
         }
     }
 
-    fun reloadPlaylist() {
+    fun reloadPlaylist(onReloadComplete: (() -> Unit)? = null) {
         viewModelScope.launch {
             _isReloading.value = true
             try {
                 repository.refreshData()
             } catch (_: Exception) {}
             _isReloading.value = false
+            onReloadComplete?.invoke()
+        }
+    }
+
+    fun startPeriodicTelegramAlertChecker(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                try {
+                    val events = repository.getSportsEvents()
+                    if (events.isNotEmpty()) {
+                        com.tivipro.data.network.TelegramAlertManager.checkAndTriggerPendingAlerts(context, events)
+                    }
+                } catch (_: Exception) {}
+                delay(60000)
+            }
         }
     }
 

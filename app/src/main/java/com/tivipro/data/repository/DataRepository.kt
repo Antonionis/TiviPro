@@ -30,6 +30,12 @@ enum class EpgSourceMode {
     PROVIDER
 }
 
+enum class WatchStatus {
+    NONE,
+    IN_PROGRESS,
+    COMPLETED
+}
+
 data class XtreamServerAccount(
     val serverUrl: String,
     val username: String,
@@ -84,9 +90,20 @@ interface DataRepository {
     fun getFavoriteMovies(): List<VodMovie>
     fun getFavoriteSeries(): List<Series>
 
+    fun markWatched(id: String)
+    fun isWatched(id: String): Boolean
+    fun getWatchedIds(): Set<String>
+    fun markEpisodeWatched(seriesId: String, episodeId: String)
+    fun getNextUnwatchedEpisode(seriesId: String, episodes: List<Episode>): Episode?
+    fun isSeriesStartedAndUnfinished(seriesId: String, episodes: List<Episode>): Boolean
+    fun getMovieWatchStatus(movieId: String): WatchStatus
+    fun getSeriesWatchStatus(seriesId: String, episodes: List<Episode>): WatchStatus
+    fun getEpisodeWatchStatus(episodeId: String): WatchStatus
+
     suspend fun refreshData()
     fun getHiddenCategoryIds(): Set<String>
     fun toggleCategoryHidden(categoryId: String)
+    fun setAllCategoriesHidden(categoryIds: List<String>, hideAll: Boolean)
     suspend fun getAllLiveCategories(): List<Category>
     fun getCategoryOrder(): List<String>
     fun saveCategoryOrder(order: List<String>)
@@ -200,6 +217,11 @@ class DataRepositoryImpl(
                 val active = currentList.firstOrNull { it.isActive } ?: currentList.firstOrNull()
                 if (active != null) {
                     persistPlaylists(listOf(active.copy(isActive = true)))
+                }
+            }
+            appContext?.let { ctx ->
+                if (com.tivipro.data.network.TelegramAlertManager.isConfigured(ctx)) {
+                    com.tivipro.data.network.TelegramAlertManager.clearTelegramConfig(ctx)
                 }
             }
         }
@@ -541,6 +563,16 @@ class DataRepositoryImpl(
         prefs?.edit()?.putStringSet("hidden_category_ids", current)?.apply()
     }
 
+    override fun setAllCategoriesHidden(categoryIds: List<String>, hideAll: Boolean) {
+        val current = getHiddenCategoryIds().toMutableSet()
+        if (hideAll) {
+            current.addAll(categoryIds)
+        } else {
+            current.removeAll(categoryIds.toSet())
+        }
+        prefs?.edit()?.putStringSet("hidden_category_ids", current)?.apply()
+    }
+
     override suspend fun refreshData() {
         if (_activeMode.value == DataSourceMode.M3U) {
             val savedM3uUrl = prefs?.getString("m3u_url", "") ?: ""
@@ -660,7 +692,16 @@ class DataRepositoryImpl(
         val rawChannels = when (_activeMode.value) {
             DataSourceMode.MOCK -> emptyList()
             DataSourceMode.XTREAM -> {
-                val acc = _activeXtreamAccount.value
+                val acc = _activeXtreamAccount.value ?: run {
+                    val savedServer = prefs?.getString("server_url", "") ?: ""
+                    val savedUser = prefs?.getString("username", "") ?: ""
+                    val savedPass = prefs?.getString("password", "") ?: ""
+                    if (savedServer.isNotBlank() && savedUser.isNotBlank() && savedPass.isNotBlank()) {
+                        val newAcc = XtreamServerAccount(savedServer, savedUser, savedPass)
+                        _activeXtreamAccount.value = newAcc
+                        newAcc
+                    } else null
+                }
                 if (acc != null && xtreamLiveChannels.isEmpty()) {
                     xtreamLiveChannels = xtreamRepository.getLiveChannels(acc.serverUrl, acc.username, acc.password)
                         .getOrDefault(emptyList())
@@ -668,11 +709,26 @@ class DataRepositoryImpl(
                 xtreamLiveChannels
             }
             DataSourceMode.M3U -> {
+                if (cachedM3uResult == null || cachedM3uResult?.liveChannels.isNullOrEmpty()) {
+                    val savedM3uUrl = prefs?.getString("m3u_url", "") ?: ""
+                    if (savedM3uUrl.isNotBlank()) {
+                        runCatching {
+                            val res = m3uRepository.fetchAndParseFromUrl(savedM3uUrl)
+                            res.getOrNull()?.let { parseResult ->
+                                cachedM3uResult = parseResult
+                            }
+                        }
+                    }
+                }
                 cachedM3uResult?.liveChannels ?: emptyList()
             }
         }
 
-        val visibleChannels = rawChannels.filter { !hidden.contains(it.categoryId) }
+        val visibleChannels = if (hidden.isEmpty() || rawChannels.all { hidden.contains(it.categoryId) }) {
+            rawChannels
+        } else {
+            rawChannels.filter { !hidden.contains(it.categoryId) }
+        }
 
         val filtered = if (categoryId.isNullOrBlank()) {
             visibleChannels
@@ -751,7 +807,16 @@ class DataRepositoryImpl(
             DataSourceMode.XTREAM -> {
                 if (xtreamSeriesCategories.isNotEmpty()) xtreamSeriesCategories
                 else {
-                    val acc = _activeXtreamAccount.value ?: return emptyList()
+                    val acc = _activeXtreamAccount.value ?: run {
+                        val savedServer = prefs?.getString("server_url", "") ?: ""
+                        val savedUser = prefs?.getString("username", "") ?: ""
+                        val savedPass = prefs?.getString("password", "") ?: ""
+                        if (savedServer.isNotBlank() && savedUser.isNotBlank() && savedPass.isNotBlank()) {
+                            val newAcc = XtreamServerAccount(savedServer, savedUser, savedPass)
+                            _activeXtreamAccount.value = newAcc
+                            newAcc
+                        } else null
+                    } ?: return emptyList()
                     xtreamRepository.getSeriesCategories(acc.serverUrl, acc.username, acc.password)
                         .getOrDefault(emptyList())
                         .also { xtreamSeriesCategories = it }
@@ -767,7 +832,16 @@ class DataRepositoryImpl(
         val rawSeries = when (_activeMode.value) {
             DataSourceMode.MOCK -> emptyList()
             DataSourceMode.XTREAM -> {
-                val acc = _activeXtreamAccount.value
+                val acc = _activeXtreamAccount.value ?: run {
+                    val savedServer = prefs?.getString("server_url", "") ?: ""
+                    val savedUser = prefs?.getString("username", "") ?: ""
+                    val savedPass = prefs?.getString("password", "") ?: ""
+                    if (savedServer.isNotBlank() && savedUser.isNotBlank() && savedPass.isNotBlank()) {
+                        val newAcc = XtreamServerAccount(savedServer, savedUser, savedPass)
+                        _activeXtreamAccount.value = newAcc
+                        newAcc
+                    } else null
+                }
                 if (acc != null && xtreamSeriesList.isEmpty()) {
                     xtreamSeriesList = xtreamRepository.getSeriesList(acc.serverUrl, acc.username, acc.password)
                         .getOrDefault(emptyList())
@@ -792,7 +866,16 @@ class DataRepositoryImpl(
 
     override suspend fun getSeriesEpisodes(seriesId: String): List<Episode> {
         if (_activeMode.value == DataSourceMode.XTREAM) {
-            val acc = _activeXtreamAccount.value
+            val acc = _activeXtreamAccount.value ?: run {
+                val savedServer = prefs?.getString("server_url", "") ?: ""
+                val savedUser = prefs?.getString("username", "") ?: ""
+                val savedPass = prefs?.getString("password", "") ?: ""
+                if (savedServer.isNotBlank() && savedUser.isNotBlank() && savedPass.isNotBlank()) {
+                    val newAcc = XtreamServerAccount(savedServer, savedUser, savedPass)
+                    _activeXtreamAccount.value = newAcc
+                    newAcc
+                } else null
+            }
             if (acc != null) {
                 val remote = xtreamRepository.getSeriesEpisodes(acc.serverUrl, acc.username, acc.password, seriesId)
                 if (remote.isSuccess) {
@@ -1124,5 +1207,66 @@ class DataRepositoryImpl(
     override fun getFavoriteSeries(): List<Series> {
         return xtreamSeriesList.filter { favoriteSeriesIds.contains(it.id) }
             .map { it.copy(isFavorite = true) }
+    }
+
+    private val watchedItemIds = mutableSetOf<String>().apply {
+        addAll(prefs?.getStringSet("watched_item_ids", emptySet()) ?: emptySet())
+    }
+
+    override fun markWatched(id: String) {
+        if (id.isBlank()) return
+        watchedItemIds.add(id)
+        prefs?.edit()?.putStringSet("watched_item_ids", watchedItemIds.toSet())?.apply()
+    }
+
+    override fun isWatched(id: String): Boolean {
+        if (id.isBlank()) return false
+        return watchedItemIds.contains(id)
+    }
+
+    override fun getWatchedIds(): Set<String> {
+        return watchedItemIds.toSet()
+    }
+
+    override fun markEpisodeWatched(seriesId: String, episodeId: String) {
+        if (episodeId.isNotBlank()) markWatched(episodeId)
+        if (seriesId.isNotBlank()) markWatched(seriesId)
+    }
+
+    override fun getNextUnwatchedEpisode(seriesId: String, episodes: List<Episode>): Episode? {
+        if (episodes.isEmpty()) return null
+        val sortedEps = episodes.sortedWith(compareBy({ it.seasonNum }, { it.episodeNum }))
+        val nextEp = sortedEps.firstOrNull { !watchedItemIds.contains(it.id) }
+        return nextEp ?: sortedEps.firstOrNull()
+    }
+
+    override fun isSeriesStartedAndUnfinished(seriesId: String, episodes: List<Episode>): Boolean {
+        if (episodes.isEmpty()) return watchedItemIds.contains(seriesId)
+        val watchedCount = episodes.count { watchedItemIds.contains(it.id) }
+        return watchedCount > 0 && watchedCount < episodes.size
+    }
+
+    override fun getMovieWatchStatus(movieId: String): WatchStatus {
+        if (movieId.isBlank()) return WatchStatus.NONE
+        return if (watchedItemIds.contains(movieId)) WatchStatus.COMPLETED else WatchStatus.NONE
+    }
+
+    override fun getSeriesWatchStatus(seriesId: String, episodes: List<Episode>): WatchStatus {
+        if (seriesId.isBlank()) return WatchStatus.NONE
+        if (episodes.isEmpty()) {
+            return if (watchedItemIds.contains(seriesId)) WatchStatus.IN_PROGRESS else WatchStatus.NONE
+        }
+        val watchedCount = episodes.count { watchedItemIds.contains(it.id) }
+        return when {
+            watchedCount == episodes.size -> WatchStatus.COMPLETED
+            watchedCount > 0 -> WatchStatus.IN_PROGRESS
+            watchedItemIds.contains(seriesId) -> WatchStatus.IN_PROGRESS
+            else -> WatchStatus.NONE
+        }
+    }
+
+    override fun getEpisodeWatchStatus(episodeId: String): WatchStatus {
+        if (episodeId.isBlank()) return WatchStatus.NONE
+        return if (watchedItemIds.contains(episodeId)) WatchStatus.COMPLETED else WatchStatus.NONE
     }
 }

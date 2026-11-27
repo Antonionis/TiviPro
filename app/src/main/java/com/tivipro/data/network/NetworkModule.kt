@@ -9,10 +9,31 @@ import okhttp3.Dns
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 
 /**
- * Centralized network module providing standard OkHttpClient instances using Dns.SYSTEM.
+ * Custom DNS provider that filters for IPv4 addresses to prevent IPv6 connection timeouts.
+ */
+object Ipv4OnlyDns : Dns {
+    override fun lookup(hostname: String): List<InetAddress> {
+        val addresses = try {
+            Dns.SYSTEM.lookup(hostname)
+        } catch (e: Exception) {
+            emptyList()
+        }
+        val ipv4Addresses = addresses.filterIsInstance<Inet4Address>()
+        return if (ipv4Addresses.isNotEmpty()) {
+            ipv4Addresses
+        } else {
+            addresses
+        }
+    }
+}
+
+/**
+ * Centralized network module providing standard OkHttpClient instances bypassing IPv6.
  */
 object NetworkModule {
 
@@ -30,7 +51,7 @@ object NetworkModule {
             .writeTimeout(20, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
-            .dns(Dns.SYSTEM)
+            .dns(Ipv4OnlyDns)
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .header("User-Agent", "IPTVSmartersPro")

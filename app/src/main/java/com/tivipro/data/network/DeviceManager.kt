@@ -78,6 +78,19 @@ object DeviceManager {
         return false
     }
 
+    private fun extractNonEmptyJsonString(json: JSONObject, vararg keys: String): String {
+        for (key in keys) {
+            if (!json.has(key)) continue
+            val obj = json.opt(key) ?: continue
+            if (obj == JSONObject.NULL) continue
+            val str = obj.toString().trim()
+            if (str.isNotBlank() && !str.equals("null", ignoreCase = true)) {
+                return str
+            }
+        }
+        return ""
+    }
+
     /**
      * Verifica la licencia del dispositivo enviando device_id, modelo y versión de OS
      * al servidor web en la IP 84.235.239.152/admin/api.php.
@@ -134,6 +147,11 @@ object DeviceManager {
                         val serverIsPremium = parseJsonBoolean(json, "es_premium", "premium", "is_premium", "esPremium")
                         val isBlocked = parseJsonBoolean(json, "bloqueado", "blocked", "is_blocked", "isBlocked", "banned")
                         val effectiveIsPremium = serverIsPremium
+
+                        val telegramFromDb = extractNonEmptyJsonString(json, "telegram", "telegram_user", "chat_id", "user_telegram")
+                        if (telegramFromDb.isNotBlank()) {
+                            TelegramAlertManager.saveTelegramConfig(context, telegramFromDb)
+                        }
 
                         val expectedToken = "active_${deviceId.hashCode()}"
                         val tokenToSave = if (effectiveIsPremium) expectedToken else "inactive"
@@ -219,6 +237,99 @@ object DeviceManager {
             e.printStackTrace()
         }
         null
+    }
+
+    /**
+     * Consulta al servidor web si se ha enviado la ID/Usuario de Telegram desde la web telegram.php.
+     * Petición: http://84.235.239.152/tivipro/telegram.php?device_id=[DEVICE_ID]&action=poll
+     */
+    suspend fun pollTelegramCredentials(context: Context): String? = withContext(Dispatchers.IO) {
+        val deviceId = getDeviceId(context)
+        if (deviceId.isBlank()) return@withContext null
+
+        val urls = listOf(
+            "https://tivipro.duckdns.org/tivipro/telegram.php?device_id=$deviceId&action=poll",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/telegram.php?device_id=$deviceId&action=poll",
+            "https://tivipro.duckdns.org/tivipro/api.php?device_id=$deviceId&action=get_telegram",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId&action=get_telegram",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php?device_id=$deviceId"
+        )
+
+        for (urlApi in urls) {
+            try {
+                val client = NetworkModule.getOkHttpClient()
+                val requestBuilder = Request.Builder()
+                    .url(urlApi)
+                    .get()
+                    .header("User-Agent", "TiviPro-App")
+                    .header("X-Device-ID", deviceId)
+
+                client.newCall(requestBuilder.build()).execute().use { response ->
+                    val responseText = response.body?.string() ?: ""
+                    val firstBrace = responseText.indexOf('{')
+                    val lastBrace = responseText.lastIndexOf('}')
+
+                    if (firstBrace >= 0 && lastBrace > firstBrace) {
+                        val jsonStr = responseText.substring(firstBrace, lastBrace + 1)
+                        val json = JSONObject(jsonStr)
+
+                        val telegramUser = extractNonEmptyJsonString(
+                            json,
+                            "telegram", "telegram_user", "chat_id", "user_telegram", "id_telegram"
+                        )
+
+                        if (telegramUser.isNotBlank() && !telegramUser.equals("null", ignoreCase = true)) {
+                            TelegramAlertManager.saveTelegramConfig(context, telegramUser)
+                            return@withContext telegramUser
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        null
+    }
+
+    /**
+     * Sincroniza la ID/Usuario de Telegram con el servidor actualizando la columna `telegram` en la BD MySQL.
+     * Petición POST: http://84.235.239.152/tivipro/telegram.php (o api.php)
+     */
+    suspend fun syncTelegramUserToDatabase(context: Context, telegramUser: String): Boolean = withContext(Dispatchers.IO) {
+        val deviceId = getDeviceId(context)
+        if (deviceId.isBlank()) return@withContext false
+
+        val urls = listOf(
+            "https://tivipro.duckdns.org/tivipro/telegram.php",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/telegram.php",
+            "http://$MANAGEMENT_SERVER_IP/tivipro/api.php"
+        )
+
+        for (targetUrl in urls) {
+            try {
+                val client = NetworkModule.getOkHttpClient()
+                val formBody = FormBody.Builder()
+                    .add("device_id", deviceId)
+                    .add("id_dispositivo", deviceId)
+                    .add("telegram", telegramUser.trim())
+                    .add("telegram_user", telegramUser.trim())
+                    .add("chat_id", telegramUser.trim())
+                    .add("action", if (telegramUser.isBlank()) "clear_telegram" else "update_telegram")
+                    .build()
+
+                val request = Request.Builder()
+                    .url(targetUrl)
+                    .post(formBody)
+                    .header("User-Agent", "TiviPro-App")
+                    .header("X-Device-ID", deviceId)
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        return@withContext true
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+        false
     }
 
     /**

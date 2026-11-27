@@ -246,9 +246,12 @@ class SportsRepositoryImpl : SportsRepository {
                     chName.contains(targetName) || targetName.contains(chName)
                 }
 
+                val cleanTitleSlug = eventTitle.lowercase(Locale.ROOT).replace(Regex("[^a-z0-9]"), "").take(20)
+                val eventUniqueId = "sport_${effDateStr}_${normHour.replace(":", "")}_$cleanTitleSlug"
+
                 events.add(
                     SportsEvent(
-                        id = "prog_${effDateStr}_$counter",
+                        id = eventUniqueId,
                         title = eventTitle,
                         competition = competition,
                         sportCategory = sportCategory,
@@ -260,7 +263,7 @@ class SportsRepositoryImpl : SportsRepository {
                         streamUrl = matchedChannel?.streamUrl ?: "",
                         iconUrl = matchedChannel?.iconUrl,
                         isLive = isLive,
-                        startTimestamp = startMs
+                        startTimestamp = if (startMs > 0L) startMs / 1000L else 0L
                     )
                 )
                 counter++
@@ -271,7 +274,21 @@ class SportsRepositoryImpl : SportsRepository {
         return@withContext events
     }
 
+    private var cachedSportsEvents: List<SportsEvent>? = null
+    private var lastSportsFetchMs: Long = 0L
+
     override suspend fun getSportsEvents(liveChannels: List<LiveChannel>): List<SportsEvent> = withContext(Dispatchers.IO) {
-        fetchSportsProgTxt(liveChannels)
+        val now = System.currentTimeMillis()
+        val cached = cachedSportsEvents
+        if (cached != null && (now - lastSportsFetchMs < 300_000L) && cached.isNotEmpty()) {
+            return@withContext cached
+        }
+
+        val result = fetchSportsProgTxt(liveChannels)
+        if (result.isNotEmpty()) {
+            cachedSportsEvents = result
+            lastSportsFetchMs = now
+        }
+        result
     }
 }

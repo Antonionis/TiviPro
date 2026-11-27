@@ -21,6 +21,7 @@ data class VodUiState(
     val seriesCategories: List<Category> = emptyList(),
     val selectedSeriesCategory: Category? = null,
     val isSeriesFavoritesSelected: Boolean = false,
+    val isContinueWatchingSelected: Boolean = false,
     val seriesList: List<Series> = emptyList(),
     val selectedSeries: Series? = null,
     val selectedSeasonNum: Int = 1,
@@ -125,7 +126,7 @@ class VodViewModel(
 
     fun selectSeriesCategory(category: Category?) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(selectedSeriesCategory = category, isSeriesFavoritesSelected = false, isLoading = true)
+            _uiState.value = _uiState.value.copy(selectedSeriesCategory = category, isSeriesFavoritesSelected = false, isContinueWatchingSelected = false, isLoading = true)
             try {
                 val series = repository.getSeriesList(category?.id)
                 _uiState.value = _uiState.value.copy(seriesList = series, isLoading = false)
@@ -137,7 +138,7 @@ class VodViewModel(
 
     fun selectSeriesFavorites() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(selectedSeriesCategory = null, isSeriesFavoritesSelected = true, isLoading = true)
+            _uiState.value = _uiState.value.copy(selectedSeriesCategory = null, isSeriesFavoritesSelected = true, isContinueWatchingSelected = false, isLoading = true)
             try {
                 val favs = repository.getFavoriteSeries()
                 _uiState.value = _uiState.value.copy(seriesList = favs, isLoading = false)
@@ -145,6 +146,58 @@ class VodViewModel(
                 _uiState.value = _uiState.value.copy(isLoading = false)
             }
         }
+    }
+
+    fun selectContinueWatchingSeries() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(selectedSeriesCategory = null, isSeriesFavoritesSelected = false, isContinueWatchingSelected = true, isLoading = true)
+            try {
+                val allSeries = repository.getSeriesList(null)
+                val filtered = allSeries.filter { s ->
+                    val eps = repository.getSeriesEpisodes(s.id)
+                    repository.isSeriesStartedAndUnfinished(s.id, eps)
+                }
+                _uiState.value = _uiState.value.copy(seriesList = filtered, isLoading = false)
+            } catch (_: Exception) {
+                _uiState.value = _uiState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun markMovieWatched(movieId: String) {
+        repository.markWatched(movieId)
+    }
+
+    fun markEpisodeWatched(seriesId: String, episodeId: String) {
+        repository.markEpisodeWatched(seriesId, episodeId)
+    }
+
+    fun getNextUnwatchedEpisode(seriesId: String, episodes: List<Episode>): Episode? {
+        return repository.getNextUnwatchedEpisode(seriesId, episodes)
+    }
+
+    fun isMovieWatched(movieId: String): Boolean {
+        return repository.isWatched(movieId)
+    }
+
+    fun isSeriesWatched(seriesId: String): Boolean {
+        return repository.isWatched(seriesId)
+    }
+
+    fun isEpisodeWatched(episodeId: String): Boolean {
+        return repository.isWatched(episodeId)
+    }
+
+    fun getMovieWatchStatus(movieId: String): com.tivipro.data.repository.WatchStatus {
+        return repository.getMovieWatchStatus(movieId)
+    }
+
+    fun getSeriesWatchStatus(seriesId: String, episodes: List<Episode>): com.tivipro.data.repository.WatchStatus {
+        return repository.getSeriesWatchStatus(seriesId, episodes)
+    }
+
+    fun getEpisodeWatchStatus(episodeId: String): com.tivipro.data.repository.WatchStatus {
+        return repository.getEpisodeWatchStatus(episodeId)
     }
 
     fun selectSeries(series: Series?) {
@@ -155,12 +208,14 @@ class VodViewModel(
             }
             _uiState.value = _uiState.value.copy(selectedSeries = series, isLoading = true)
             try {
-                val enriched = com.tivipro.data.network.TmdbHelper.enrichSeries(series)
+                // Fetch episodes first so they are never blocked by external TMDB enrichment
                 val episodes = repository.getSeriesEpisodes(series.id)
                 val seasonNums = episodes.map { it.seasonNum }.distinct().sorted()
                 val seasonInfos = seasonNums.map { num -> com.tivipro.model.SeasonInfo(seasonNumber = num) }
-                val updatedSeries = enriched.copy(seasons = if (seasonInfos.isNotEmpty()) seasonInfos else enriched.seasons)
                 val initialSeason = seasonNums.firstOrNull() ?: 1
+
+                val enriched = runCatching { com.tivipro.data.network.TmdbHelper.enrichSeries(series) }.getOrDefault(series)
+                val updatedSeries = enriched.copy(seasons = if (seasonInfos.isNotEmpty()) seasonInfos else enriched.seasons)
 
                 _uiState.value = _uiState.value.copy(
                     selectedSeries = updatedSeries,

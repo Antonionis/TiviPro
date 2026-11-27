@@ -28,10 +28,15 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.VideoLibrary
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,6 +85,34 @@ fun SeriesScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
+    var debouncedQuery by remember { mutableStateOf("") }
+    var filteredSeriesList by remember { mutableStateOf(uiState.seriesList) }
+
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isBlank()) {
+            debouncedQuery = ""
+        } else {
+            kotlinx.coroutines.delay(200L)
+            debouncedQuery = searchQuery
+        }
+    }
+
+    LaunchedEffect(uiState.seriesList, debouncedQuery) {
+        val query = debouncedQuery.trim()
+        if (query.isBlank()) {
+            filteredSeriesList = uiState.seriesList
+        } else {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                val result = uiState.seriesList.filter {
+                    it.name.contains(query, ignoreCase = true)
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    filteredSeriesList = result
+                }
+            }
+        }
+    }
 
     val gridState = rememberLazyGridState()
     val firstSeriesFocusRequester = remember { FocusRequester() }
@@ -102,6 +135,7 @@ fun SeriesScreen(
             series = selectedSeries,
             selectedSeasonNum = uiState.selectedSeasonNum,
             episodes = uiState.seriesEpisodes,
+            isLoading = uiState.isLoading,
             onSeasonSelect = { num -> viewModel.selectSeason(num) },
             onEpisodePlay = { ep ->
                 onEpisodePlay(ep)
@@ -164,7 +198,77 @@ fun SeriesScreen(
                         color = Color.White
                     )
                 }
-                TiviProLogo(sizeScale = if (isCompactWidth) 0.65f else 0.75f, showGlow = false)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Real-time Search Box for SERIES
+                    Box(
+                        modifier = Modifier
+                            .width(if (isCompactWidth) 120.dp else 160.dp)
+                            .height(32.dp)
+                            .background(Color(0xFF1B1B2C), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFF33334A), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = "Buscar serie",
+                                tint = OrangePrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Buscar serie...",
+                                        fontSize = 11.sp,
+                                        color = TextMuted,
+                                        maxLines = 1
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = Color.White,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    cursorBrush = SolidColor(OrangePrimary),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(18.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Limpiar",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    TiviProLogo(sizeScale = if (isCompactWidth) 0.65f else 0.75f, showGlow = false)
+                }
             }
 
             // Category Chips
@@ -278,9 +382,11 @@ fun SeriesScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    itemsIndexed(uiState.seriesList, key = { _, s -> s.id }) { index, series ->
+                    itemsIndexed(filteredSeriesList, key = { _, s -> s.id }) { index, series ->
+                        val watchStatus = remember(series.id, uiState.seriesEpisodes) { viewModel.getSeriesWatchStatus(series.id, uiState.seriesEpisodes) }
                         SeriesCard(
                             series = series,
+                            watchStatus = watchStatus,
                             onClick = {
                                 focusedSeriesId = series.id
                                 viewModel.selectSeries(series)
@@ -305,6 +411,7 @@ fun SeriesScreen(
 @Composable
 fun SeriesCard(
     series: Series,
+    watchStatus: com.tivipro.data.repository.WatchStatus = com.tivipro.data.repository.WatchStatus.NONE,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isRecentlyClosedDetail: Boolean = false,
@@ -396,6 +503,43 @@ fun SeriesCard(
                             softWrap = false
                         )
                     }
+                }
+            }
+
+            // Watched Checkmark Badge ("Stick" on top-left: ✓ VISTO only if completed, ▶ VIENDO if in progress)
+            if (watchStatus == com.tivipro.data.repository.WatchStatus.COMPLETED) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(com.tivipro.ui.theme.StatusSuccess)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "✓ VISTO",
+                        color = Color.White,
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            } else if (watchStatus == com.tivipro.data.repository.WatchStatus.IN_PROGRESS) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(OrangePrimary)
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "▶ VIENDO",
+                        color = Color.White,
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
 

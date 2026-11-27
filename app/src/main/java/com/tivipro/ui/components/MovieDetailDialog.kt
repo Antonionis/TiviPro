@@ -4,7 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import java.net.URLEncoder
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -66,6 +70,7 @@ import com.tivipro.ui.theme.OrangePrimary
 import com.tivipro.ui.theme.SurfaceDark
 import com.tivipro.ui.theme.SurfaceDarkCard
 import com.tivipro.ui.theme.TextMuted
+import com.tivipro.ui.theme.TextSecondary
 
 private fun cleanMovieTitle(rawName: String, releaseYear: String? = null): String {
     var title = rawName.trim()
@@ -101,6 +106,8 @@ fun MovieDetailDialog(
 ) {
     val context = LocalContext.current
     val playButtonFocusRequester = remember { FocusRequester() }
+    val firstActorFocusRequester = remember { FocusRequester() }
+    var selectedActorForDialog by remember { mutableStateOf<com.tivipro.model.CastMember?>(null) }
 
     LaunchedEffect(Unit) {
         try {
@@ -166,13 +173,12 @@ fun MovieDetailDialog(
                             Column(
                                 modifier = Modifier.weight(1f)
                             ) {
-                                // Title with Single Release Year
-                                val cleanTitle = cleanMovieTitle(movie.name)
+                                // Title with Single Clean Title (Year shown in Recuadro)
                                 val releaseYear = formatReleaseYear(movie.releaseDate)
-                                val titleWithYear = if (!releaseYear.isNullOrBlank()) "$cleanTitle ($releaseYear)" else cleanTitle
+                                val cleanTitle = cleanMovieTitle(movie.name, releaseYear)
 
                                 Text(
-                                    text = titleWithYear,
+                                    text = cleanTitle,
                                     fontSize = if (isCompact) 18.sp else 22.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
@@ -180,29 +186,72 @@ fun MovieDetailDialog(
                                     overflow = TextOverflow.Ellipsis
                                 )
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
 
-                                // Subtitle: Genero y Duracion
-                                val durationStr = formatDurationDisplay(movie.durationMinutes)
-                                val genreAndDuration = listOfNotNull(
-                                    movie.genres?.ifBlank { null },
-                                    durationStr
-                                ).joinToString(" • ")
+                                // 3 Recuadros: 1. Año, 2. Género, 3. Clasificación Edad
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                ) {
+                                    if (!releaseYear.isNullOrBlank()) {
+                                        Surface(
+                                            color = Color(0xFF1F2238),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3B3E5C))
+                                        ) {
+                                            Text(
+                                                text = releaseYear,
+                                                color = Color.White,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
 
-                                if (genreAndDuration.isNotBlank()) {
-                                    Text(
-                                        text = genreAndDuration,
-                                        color = OrangeGlow,
-                                        fontSize = if (isCompact) 12.sp else 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
+                                    val genresStr = movie.genres?.ifBlank { null }
+                                    if (!genresStr.isNullOrBlank()) {
+                                        Surface(
+                                            color = Color(0xFF1F2238),
+                                            shape = RoundedCornerShape(4.dp),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3B3E5C))
+                                        ) {
+                                            Text(
+                                                text = genresStr,
+                                                color = TextSecondary,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                    }
+
+                                    val certAge = com.tivipro.data.network.TmdbHelper.formatCertificationDisplay(movie.certification)
+                                    Surface(
+                                        color = Color(0xFF1F2238),
+                                        shape = RoundedCornerShape(4.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF3B3E5C))
+                                    ) {
+                                        Text(
+                                            text = certAge,
+                                            color = Color.White,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+
+                                    val durationStr = formatDurationDisplay(movie.durationMinutes)
+                                    if (!durationStr.isNullOrBlank()) {
+                                        Text(text = "• $durationStr", color = OrangeGlow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
 
                                 // Star Rating Bar
-                                StarRatingBar(rating = movie.rating, starSize = 14.dp, showNumericRating = true)
+                                StarRatingBar(rating = movie.rating, starSize = 13.dp, showNumericRating = true)
 
                                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -311,54 +360,34 @@ fun MovieDetailDialog(
                                     lineHeight = 18.sp,
                                     maxLines = 4,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.clickable { showFullOverviewDialog = true }
+                                    modifier = Modifier
+                                        .focusProperties { down = firstActorFocusRequester }
+                                        .clickable { showFullOverviewDialog = true }
                                 )
                             }
                         }
 
-                        // Bottom Section: Reparto Principal (Navigable / Focusable)
+                        // Bottom Section: Reparto Principal with Headshots (Image 2 & 3 style)
                         if (movie.cast.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = "Reparto principal",
                                 color = Color.White,
-                                fontSize = 16.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
                             LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(movie.cast) { member ->
-                                    FocusableCard(
-                                        onClick = {},
-                                        modifier = Modifier.width(140.dp)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(10.dp)
-                                        ) {
-                                            Text(
-                                                text = member.name,
-                                                color = Color.White,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            member.role?.let { role ->
-                                                Spacer(modifier = Modifier.height(2.dp))
-                                                Text(
-                                                    text = role,
-                                                    color = TextMuted,
-                                                    fontSize = 11.sp,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-                                    }
+                                itemsIndexed(movie.cast) { index, member ->
+                                    CastMemberCard(
+                                        member = member,
+                                        onClick = { selectedActorForDialog = member },
+                                        modifier = if (index == 0) Modifier.focusRequester(firstActorFocusRequester) else Modifier
+                                    )
                                 }
                             }
                         }
@@ -377,6 +406,14 @@ fun MovieDetailDialog(
                             tint = Color.White
                         )
                     }
+                }
+
+                // Actor Detail Dialog Popup when clicking an actor card
+                selectedActorForDialog?.let { actor ->
+                    ActorDetailDialog(
+                        castMember = actor,
+                        onDismiss = { selectedActorForDialog = null }
+                    )
                 }
             }
         }
@@ -444,6 +481,82 @@ fun FullOverviewDialog(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("CERRAR", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CastMemberCard(
+    member: com.tivipro.model.CastMember,
+    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    FocusableCard(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161726)),
+        modifier = modifier
+            .width(108.dp)
+            .heightIn(min = 175.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Full Vertical Portrait Photo (TMDb 2:3 style)
+            if (!member.profileUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = member.profileUrl,
+                    contentDescription = member.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(115.dp)
+                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                        .background(SurfaceDarkCard)
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(115.dp)
+                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                        .background(Color(0xFF28283C)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = member.name.take(1).uppercase(),
+                        color = Color.White,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Text Info Below Image (Actor Name + Role)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 6.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = member.name,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    lineHeight = 13.sp,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                member.role?.let { role ->
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = role,
+                        color = TextMuted,
+                        fontSize = 9.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
         }

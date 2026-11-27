@@ -17,11 +17,22 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        try {
+            System.setProperty("java.net.preferIPv4Stack", "true")
+            System.setProperty("java.net.preferIPv6Addresses", "false")
+        } catch (_: Exception) {}
+
         super.onCreate(savedInstanceState)
         try {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         } catch (_: Exception) {}
         enableEdgeToEdge()
+
+        try {
+            val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+            windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        } catch (_: Exception) {}
 
         // Llamar a la verificación del dispositivo al abrir la app
         verificarDispositivo()

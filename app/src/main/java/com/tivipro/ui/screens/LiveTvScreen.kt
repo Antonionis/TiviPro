@@ -23,7 +23,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AspectRatio
@@ -32,6 +36,7 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +44,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -120,6 +128,18 @@ fun LiveTvScreen(
     var showMultiviewDialog by remember { mutableStateOf(false) }
     var multiviewCh1 by remember { mutableStateOf<LiveChannel?>(null) }
     var multiviewCh2 by remember { mutableStateOf<LiveChannel?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredChannels = remember(uiState.channels, searchQuery) {
+        if (searchQuery.isBlank()) {
+            uiState.channels
+        } else {
+            uiState.channels.filter { ch ->
+                ch.name.contains(searchQuery, ignoreCase = true) ||
+                ch.channelNumber.toString().contains(searchQuery)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadData()
@@ -157,9 +177,10 @@ fun LiveTvScreen(
     ) {
         val screenWidth = maxWidth
         val isCompactWidth = screenWidth < 600.dp
-        val horizontalPadding = if (isCompactWidth) 12.dp else 24.dp
-        val verticalPadding = if (maxHeight < 500.dp) 6.dp else 12.dp
-        val computedChannelRowHeight = if (maxHeight < 500.dp) 38.dp else 46.dp
+        val isCompactHeight = maxHeight < 500.dp
+        val horizontalPadding = if (isCompactWidth) 8.dp else 20.dp
+        val verticalPadding = if (isCompactHeight) 2.dp else 8.dp
+        val computedChannelRowHeight = if (isCompactHeight) 32.dp else 42.dp
 
         Column(
             modifier = Modifier
@@ -177,40 +198,36 @@ fun LiveTvScreen(
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .size(if (isCompactHeight) 30.dp else 36.dp)
+                            .clip(RoundedCornerShape(10.dp))
                             .background(SurfaceDarkCard)
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Volver",
-                            tint = Color.White
+                            tint = Color.White,
+                            modifier = Modifier.size(if (isCompactHeight) 16.dp else 20.dp)
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     Icon(
                         imageVector = Icons.Rounded.Tv,
                         contentDescription = null,
                         tint = OrangePrimary,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(if (isCompactHeight) 20.dp else 24.dp)
                     )
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
 
                     Column {
                         Text(
                             text = "TELEVISIÓN EN DIRECTO",
                             color = Color.White,
-                            fontSize = if (isCompactWidth) 15.sp else 18.sp,
+                            fontSize = if (isCompactHeight) 13.sp else 16.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 0.5.sp
-                        )
-                        Text(
-                            text = "${uiState.channels.size} Canales disponibles",
-                            color = TextMuted,
-                            fontSize = if (isCompactWidth) 10.sp else 11.sp
                         )
                     }
                 }
@@ -219,6 +236,71 @@ fun LiveTvScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Search Bar for Live Channels (Custom BasicTextField to prevent vertical text clipping)
+                    Box(
+                        modifier = Modifier
+                            .width(if (isCompactWidth) 110.dp else 150.dp)
+                            .height(32.dp)
+                            .background(Color(0xFF1B1B2C), RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFF33334A), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = "Buscar canal",
+                                tint = OrangePrimary,
+                                modifier = Modifier.size(15.dp)
+                            )
+
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "Buscar canal...",
+                                        fontSize = 11.sp,
+                                        color = TextMuted,
+                                        maxLines = 1
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 15.sp
+                                    ),
+                                    cursorBrush = SolidColor(OrangePrimary),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(20.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Limpiar",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     FocusableCard(
                         onClick = { showChannelSelectorForMultiview = true },
                         shape = RoundedCornerShape(18.dp),
@@ -288,13 +370,13 @@ fun LiveTvScreen(
                                     color = if (isAllSelected) OrangeGlow else Color(0xFF33334A),
                                     shape = RoundedCornerShape(18.dp)
                                 )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "Todos",
                                 color = if (isAllSelected) Color.White else TextSecondary,
-                                fontSize = 12.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = if (isAllSelected) FontWeight.ExtraBold else FontWeight.Medium
                             )
                         }
@@ -316,13 +398,13 @@ fun LiveTvScreen(
                                     color = if (isFavSelected) OrangeGlow else Color(0xFF33334A),
                                     shape = RoundedCornerShape(18.dp)
                                 )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "⭐ Favoritos",
                                 color = if (isFavSelected) Color.White else TextSecondary,
-                                fontSize = 12.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = if (isFavSelected) FontWeight.ExtraBold else FontWeight.Medium
                             )
                         }
@@ -344,13 +426,13 @@ fun LiveTvScreen(
                                     color = if (isSelected) OrangeGlow else Color(0xFF33334A),
                                     shape = RoundedCornerShape(18.dp)
                                 )
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = category.name,
                                 color = if (isSelected) Color.White else TextSecondary,
-                                fontSize = 12.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
                             )
                         }
@@ -380,7 +462,7 @@ fun LiveTvScreen(
                             .fillMaxHeight()
                     ) {
                         Text(
-                            text = "CANALES (${uiState.channels.size})",
+                            text = if (searchQuery.isBlank()) "CANALES (${uiState.channels.size})" else "CANALES (${filteredChannels.size})",
                             color = TextMuted,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -388,8 +470,8 @@ fun LiveTvScreen(
                         )
 
                         val listState = rememberLazyListState()
-                        val selectedChannelIndex = remember(uiState.channels, uiState.selectedChannel) {
-                            uiState.channels.indexOfFirst { it.id == uiState.selectedChannel?.id }
+                        val selectedChannelIndex = remember(filteredChannels, uiState.selectedChannel) {
+                            filteredChannels.indexOfFirst { it.id == uiState.selectedChannel?.id }
                         }
 
                         LaunchedEffect(uiState.selectedChannel?.id) {
@@ -409,7 +491,7 @@ fun LiveTvScreen(
                             verticalArrangement = Arrangement.spacedBy(3.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
-                            itemsIndexed(uiState.channels, key = { index, ch -> "${ch.id}_$index" }) { index, channel ->
+                            itemsIndexed(filteredChannels, key = { index, ch -> "${ch.id}_$index" }) { index, channel ->
                                 val isSelected = uiState.selectedChannel?.id == channel.id
                                 ChannelListItem(
                                     channel = channel,
@@ -429,9 +511,9 @@ fun LiveTvScreen(
                                                 if (now - lastUpPressTime < 300) {
                                                     try {
                                                         scope.launch {
-                                                            if (uiState.channels.isNotEmpty()) {
+                                                            if (filteredChannels.isNotEmpty()) {
                                                                 listState.animateScrollToItem(0)
-                                                                viewModel.selectChannel(uiState.channels.first())
+                                                                viewModel.selectChannel(filteredChannels.first())
                                                             }
                                                         }
                                                     } catch (_: Exception) {}
@@ -444,10 +526,10 @@ fun LiveTvScreen(
                                                 if (now - lastDownPressTime < 300) {
                                                     try {
                                                         scope.launch {
-                                                            if (uiState.channels.isNotEmpty()) {
-                                                                val lastIndex = uiState.channels.size - 1
+                                                            if (filteredChannels.isNotEmpty()) {
+                                                                val lastIndex = filteredChannels.size - 1
                                                                 listState.animateScrollToItem(lastIndex)
-                                                                viewModel.selectChannel(uiState.channels.last())
+                                                                viewModel.selectChannel(filteredChannels.last())
                                                             }
                                                         }
                                                     } catch (_: Exception) {}
@@ -485,7 +567,7 @@ fun LiveTvScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 10.dp)
+                                    .padding(bottom = if (isCompactHeight) 4.dp else 8.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     AsyncImage(
@@ -493,21 +575,21 @@ fun LiveTvScreen(
                                         contentDescription = channel.name,
                                         contentScale = ContentScale.Fit,
                                         modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .size(if (isCompactHeight) 26.dp else 34.dp)
+                                            .clip(RoundedCornerShape(6.dp))
                                             .background(SurfaceDarkCard)
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Column {
                                         Text(
                                             text = channel.name,
-                                            fontSize = 15.sp,
+                                            fontSize = if (isCompactHeight) 13.sp else 15.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
                                         Text(
                                             text = "Canal ${channel.channelNumber ?: ""}",
-                                            fontSize = 11.sp,
+                                            fontSize = 10.sp,
                                             color = OrangeGlow
                                         )
                                     }
@@ -516,14 +598,15 @@ fun LiveTvScreen(
                                 IconButton(
                                     onClick = { onChannelPlay(channel) },
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(if (isCompactHeight) 30.dp else 36.dp)
                                         .clip(RoundedCornerShape(8.dp))
                                         .background(OrangePrimary)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.PlayArrow,
                                         contentDescription = "Reproducción Rápida",
-                                        tint = Color.White
+                                        tint = Color.White,
+                                        modifier = Modifier.size(if (isCompactHeight) 18.dp else 22.dp)
                                     )
                                 }
                             }
@@ -546,15 +629,6 @@ fun LiveTvScreen(
                                     }
                                 }
                             }
-
-                            // EPG Timeline List
-                            Text(
-                                text = "PROGRAMACIÓN (ACTUAL Y SIGUIENTES 4)",
-                                color = TextMuted,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(bottom = 6.dp)
-                            )
 
                             if (filteredEpgPrograms.isEmpty()) {
                                 Box(
@@ -625,125 +699,188 @@ fun SelectMultiviewChannelsDialog(
     var isSelectingForCh1 by remember { mutableStateOf(false) }
     var isSelectingForCh2 by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(0.92f).clip(RoundedCornerShape(18.dp)),
-            color = SurfaceDark
-        ) {
-            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("📺 MODO MULTIVIEW - SELECCIONAR CANALES", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White)
-                    }
-                }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        BoxWithConstraints {
+            val isCompactHeight = maxHeight < 480.dp
+            val dialogWidth = if (isCompactHeight) 0.88f else 0.70f
 
-                Text(
-                    text = "Elige los 2 canales que deseas ver simultáneamente en la pantalla dividida:",
-                    color = TextMuted,
-                    fontSize = 12.sp
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(dialogWidth)
+                    .clip(RoundedCornerShape(18.dp)),
+                color = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(if (isCompactHeight) 10.dp else 16.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactHeight) 6.dp else 10.dp)
                 ) {
-                    // Left Screen Channel Card
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("PANTALLA 1 (IZQUIERDA)", color = OrangePrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = selectedCh1?.name ?: "Sin canal", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            FocusableCard(
-                                onClick = {
-                                    isSelectingForCh1 = true
-                                    isSelectingForCh2 = false
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF222238))
-                            ) {
-                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                                    Text("ELEGIR CANAL 1", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
+                        Text(
+                            text = "📺 MODO MULTIVIEW - SELECCIONAR CANALES",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isCompactHeight) 13.sp else 15.sp
+                        )
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Rounded.Close, contentDescription = "Cerrar", tint = Color.White, modifier = Modifier.size(18.dp))
                         }
                     }
 
-                    // Right Screen Channel Card
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                    Text(
+                        text = "Elige los 2 canales que deseas ver simultáneamente en la pantalla dividida:",
+                        color = TextMuted,
+                        fontSize = if (isCompactHeight) 10.5.sp else 12.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("PANTALLA 2 (DERECHA)", color = OrangePrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text(text = selectedCh2?.name ?: "Sin canal", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            FocusableCard(
-                                onClick = {
-                                    isSelectingForCh2 = true
-                                    isSelectingForCh1 = false
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF222238))
+                        // Left Screen Channel Card
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(if (isCompactHeight) 8.dp else 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                                    Text("ELEGIR CANAL 2", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Channel Picker List if selecting
-                if (isSelectingForCh1 || isSelectingForCh2) {
-                    val targetTitle = if (isSelectingForCh1) "Seleccionando para Pantalla 1" else "Seleccionando para Pantalla 2"
-                    Text(text = targetTitle, color = OrangeGlow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-
-                    LazyColumn(modifier = Modifier.heightIn(max = 160.dp)) {
-                        items(channels) { ch ->
-                            FocusableCard(
-                                onClick = {
-                                    if (isSelectingForCh1) {
-                                        selectedCh1 = ch
-                                        isSelectingForCh1 = false
-                                    } else {
-                                        selectedCh2 = ch
+                                Text("PANTALLA 1 (IZQUIERDA)", color = OrangePrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = selectedCh1?.name ?: "Sin canal",
+                                    color = Color.White,
+                                    fontSize = if (isCompactHeight) 12.sp else 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                FocusableCard(
+                                    onClick = {
+                                        isSelectingForCh1 = !isSelectingForCh1
                                         isSelectingForCh2 = false
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelectingForCh1) OrangePrimary else Color(0xFF222238)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("ELEGIR CANAL 1", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
-                                },
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E2C))
+                                }
+                            }
+                        }
+
+                        // Right Screen Channel Card
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = SurfaceDarkCard)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(if (isCompactHeight) 8.dp else 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(text = ch.name, color = Color.White, fontSize = 12.sp, modifier = Modifier.padding(8.dp))
+                                Text("PANTALLA 2 (DERECHA)", color = OrangePrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = selectedCh2?.name ?: "Sin canal",
+                                    color = Color.White,
+                                    fontSize = if (isCompactHeight) 12.sp else 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                FocusableCard(
+                                    onClick = {
+                                        isSelectingForCh2 = !isSelectingForCh2
+                                        isSelectingForCh1 = false
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isSelectingForCh2) OrangePrimary else Color(0xFF222238)
+                                    )
+                                ) {
+                                    Box(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("ELEGIR CANAL 2", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                    // Channel Picker List if selecting
+                    if (isSelectingForCh1 || isSelectingForCh2) {
+                        val targetTitle = if (isSelectingForCh1) "Seleccionando para Pantalla 1:" else "Seleccionando para Pantalla 2:"
+                        Text(text = targetTitle, color = OrangeGlow, fontSize = 11.sp, fontWeight = FontWeight.Bold)
 
-                FocusableCard(
-                    onClick = {
-                        val c1 = selectedCh1 ?: channels.firstOrNull()
-                        val c2 = selectedCh2 ?: channels.getOrNull(1) ?: c1
-                        if (c1 != null && c2 != null) {
-                            onConfirm(c1, c2)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = if (isCompactHeight) 120.dp else 180.dp)
+                                .verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            channels.forEach { ch ->
+                                FocusableCard(
+                                    onClick = {
+                                        if (isSelectingForCh1) {
+                                            selectedCh1 = ch
+                                            isSelectingForCh1 = false
+                                        } else {
+                                            selectedCh2 = ch
+                                            isSelectingForCh2 = false
+                                        }
+                                    },
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E2C))
+                                ) {
+                                    Text(
+                                        text = ch.name,
+                                        color = Color.White,
+                                        fontSize = 11.5.sp,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
                         }
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                    colors = CardDefaults.cardColors(containerColor = OrangePrimary)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("▶ INICIAR MULTIVIEW (2 CANALES)", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    FocusableCard(
+                        onClick = {
+                            val c1 = selectedCh1 ?: channels.firstOrNull()
+                            val c2 = selectedCh2 ?: channels.getOrNull(1) ?: c1
+                            if (c1 != null && c2 != null) {
+                                onConfirm(c1, c2)
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (isCompactHeight) 38.dp else 44.dp),
+                        colors = CardDefaults.cardColors(containerColor = OrangePrimary)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("▶ INICIAR MULTIVIEW (2 CANALES)", fontWeight = FontWeight.Bold, fontSize = if (isCompactHeight) 11.5.sp else 13.sp, color = Color.White)
+                        }
                     }
                 }
             }
@@ -938,7 +1075,7 @@ fun EpgProgramItem(
 
             Text(
                 text = program.title,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 maxLines = 1,
@@ -949,9 +1086,9 @@ fun EpgProgramItem(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = program.description,
-                    fontSize = 10.sp,
+                    fontSize = 9.5.sp,
                     color = TextMuted,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }

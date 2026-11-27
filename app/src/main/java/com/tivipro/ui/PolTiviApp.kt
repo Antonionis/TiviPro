@@ -74,10 +74,12 @@ fun TiviProApp(
         LaunchedEffect(isLoggedIn) {
             if (isLoggedIn) {
                 mainViewModel.navigateTo(AppScreen.DASHBOARD)
-                mainViewModel.reloadPlaylist()
-                liveTvViewModel.loadData()
-                vodViewModel.loadData()
-                sportsViewModel.loadSportsEvents()
+                mainViewModel.reloadPlaylist {
+                    liveTvViewModel.loadData()
+                    vodViewModel.loadData()
+                    sportsViewModel.loadSportsEvents()
+                }
+                mainViewModel.startPeriodicTelegramAlertChecker(activityContext)
             } else {
                 mainViewModel.navigateTo(AppScreen.LOGIN)
             }
@@ -138,6 +140,7 @@ fun TiviProApp(
                         MoviesScreen(
                             viewModel = vodViewModel,
                             onMoviePlay = { movie ->
+                                vodViewModel.markMovieWatched(movie.id)
                                 mainViewModel.playMovie(movie)
                             },
                             onBackClick = { mainViewModel.navigateTo(AppScreen.DASHBOARD) }
@@ -147,6 +150,7 @@ fun TiviProApp(
                         SeriesScreen(
                             viewModel = vodViewModel,
                             onEpisodePlay = { ep ->
+                                vodViewModel.markEpisodeWatched(vodViewModel.uiState.value.selectedSeries?.id ?: "", ep.id)
                                 mainViewModel.playStream(
                                     title = ep.title,
                                     streamUrl = ep.streamUrl,

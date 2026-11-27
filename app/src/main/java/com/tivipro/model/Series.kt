@@ -11,9 +11,14 @@ data class Series(
     val id: String,
     val name: String,
     val posterUrl: String? = null,
+    val backdropUrl: String? = null,
+    val logoUrl: String? = null,
     val categoryId: String,
     val rating: Double? = null,
     val overview: String? = null,
+    val releaseDate: String? = null,
+    val genres: String? = null,
+    val certification: String? = null,
     val seasons: List<SeasonInfo> = emptyList(),
     val isFavorite: Boolean = false
 )
